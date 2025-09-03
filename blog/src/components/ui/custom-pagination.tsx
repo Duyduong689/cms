@@ -1,11 +1,11 @@
-import { useMemo } from "react"
+import { useMemo } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Pagination,
   PaginationContent,
@@ -14,17 +14,18 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
+} from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
-  page: number
-  pageSize: number
-  totalPages: number
-  onPageChange: (page: number) => void
-  onPageSizeChange: (pageSize: number) => void
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
 }
 
-const DOTS = "..."
+const DOTS = "...";
 
 const CustomPagination = ({
   page,
@@ -34,40 +35,40 @@ const CustomPagination = ({
   onPageSizeChange,
 }: PaginationProps) => {
   const paginationRange = useMemo(() => {
-    const totalPageNumbers = 7
-    
+    const totalPageNumbers = 7;
+
     if (totalPageNumbers >= totalPages) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
-    const leftSiblingIndex = Math.max(page - 1, 1)
-    const rightSiblingIndex = Math.min(page + 1, totalPages)
+    const leftSiblingIndex = Math.max(page - 1, 1);
+    const rightSiblingIndex = Math.min(page + 1, totalPages);
 
-    const shouldShowLeftDots = leftSiblingIndex > 2
-    const shouldShowRightDots = rightSiblingIndex < totalPages - 2
+    const shouldShowLeftDots = leftSiblingIndex > 2;
+    const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
 
     if (!shouldShowLeftDots && shouldShowRightDots) {
-      const leftItemCount = 3
-      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1)
-      return [...leftRange, DOTS, totalPages - 1, totalPages]
+      const leftItemCount = 3;
+      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+      return [...leftRange, DOTS, totalPages - 1, totalPages];
     }
 
     if (shouldShowLeftDots && !shouldShowRightDots) {
-      const rightItemCount = 3
+      const rightItemCount = 3;
       const rightRange = Array.from(
         { length: rightItemCount },
         (_, i) => totalPages - rightItemCount + i + 1
-      )
-      return [1, 2, DOTS, ...rightRange]
+      );
+      return [1, 2, DOTS, ...rightRange];
     }
 
     if (shouldShowLeftDots && shouldShowRightDots) {
-      const middleRange = [leftSiblingIndex, page, rightSiblingIndex]
-      return [1, DOTS, ...middleRange, DOTS, totalPages]
+      const middleRange = [leftSiblingIndex, page, rightSiblingIndex];
+      return [1, DOTS, ...middleRange, DOTS, totalPages];
     }
 
-    return Array.from({ length: totalPages }, (_, i) => i + 1)
-  }, [page, totalPages])
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }, [page, totalPages]);
 
   return (
     <div className="flex items-center justify-between gap-4">
@@ -77,7 +78,9 @@ const CustomPagination = ({
             <PaginationPrevious
               onClick={() => onPageChange(Math.max(1, page - 1))}
               aria-disabled={page <= 1}
-              className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+              className={
+                page <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"
+              }
             />
           </PaginationItem>
 
@@ -87,7 +90,7 @@ const CustomPagination = ({
                 <PaginationItem key={`dots-${index}`}>
                   <PaginationEllipsis />
                 </PaginationItem>
-              )
+              );
             }
 
             return (
@@ -95,18 +98,23 @@ const CustomPagination = ({
                 <PaginationLink
                   onClick={() => onPageChange(pageNumber as number)}
                   isActive={page === pageNumber}
+                  className={cn("cursor-pointer", page === pageNumber ? "bg-primary text-primary-foreground" : "cursor-pointer")}
                 >
                   {pageNumber}
                 </PaginationLink>
               </PaginationItem>
-            )
+            );
           })}
 
           <PaginationItem>
             <PaginationNext
               onClick={() => onPageChange(Math.min(totalPages, page + 1))}
               aria-disabled={page >= totalPages}
-              className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+              className={
+                page >= totalPages
+                  ? "pointer-events-none opacity-50"
+                  : "cursor-pointer"
+              }
             />
           </PaginationItem>
         </PaginationContent>
@@ -131,7 +139,7 @@ const CustomPagination = ({
         </Select>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default CustomPagination
+export default CustomPagination;
