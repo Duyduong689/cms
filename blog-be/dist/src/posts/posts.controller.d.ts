@@ -7,7 +7,6 @@ export declare class PostsController {
     constructor(postsService: PostsService);
     create(createPostDto: CreatePostDto): Promise<{
         coverImage: string | null;
-        id: string;
         title: string;
         slug: string;
         content: string;
@@ -18,52 +17,14 @@ export declare class PostsController {
         metaTitle: string | null;
         metaDescription: string | null;
         openGraphImage: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-    }>;
-    findAll(query: QueryPostDto): Promise<{
-        items: {
-            coverImage: string | null;
-            id: string;
-            title: string;
-            slug: string;
-            content: string;
-            excerpt: string;
-            authorId: string | null;
-            tags: string[];
-            status: string;
-            metaTitle: string | null;
-            metaDescription: string | null;
-            openGraphImage: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-        }[];
-        meta: {
-            total: number;
-            page: number;
-            limit: number;
-            pages: number;
-        };
-    }>;
-    findOne(id: string): Promise<{
-        coverImage: string | null;
         id: string;
-        title: string;
-        slug: string;
-        content: string;
-        excerpt: string;
-        authorId: string | null;
-        tags: string[];
-        status: string;
-        metaTitle: string | null;
-        metaDescription: string | null;
-        openGraphImage: string | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
+    findAll(query: QueryPostDto): Promise<unknown>;
+    findOne(id: string): Promise<unknown>;
     update(id: string, updatePostDto: UpdatePostDto): Promise<{
         coverImage: string | null;
-        id: string;
         title: string;
         slug: string;
         content: string;
@@ -74,12 +35,12 @@ export declare class PostsController {
         metaTitle: string | null;
         metaDescription: string | null;
         openGraphImage: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;
     remove(id: string): Promise<{
         coverImage: string | null;
-        id: string;
         title: string;
         slug: string;
         content: string;
@@ -90,6 +51,7 @@ export declare class PostsController {
         metaTitle: string | null;
         metaDescription: string | null;
         openGraphImage: string | null;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
     }>;

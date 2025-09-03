@@ -12,22 +12,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../common/prisma/prisma.service");
+const redis_service_1 = require("../common/redis/redis.service");
 let PostsService = class PostsService {
-    constructor(prisma) {
+    constructor(prisma, redis) {
         this.prisma = prisma;
+        this.redis = redis;
+        this.CACHE_TTL = 60 * 5;
+        this.CACHE_PREFIX = 'posts';
     }
     async create(createPostDto) {
         const { title, slug, ...restData } = createPostDto;
         const finalSlug = slug || this.slugify(title);
-        return this.prisma.post.create({
+        const post = await this.prisma.post.create({
             data: {
                 title,
                 slug: finalSlug,
                 ...restData,
             },
         });
+        await this.redis.del(`${this.CACHE_PREFIX}:list`);
+        return post;
     }
     async findAll(query) {
+        const cacheKey = this.redis.generateKey(`${this.CACHE_PREFIX}:list`, query);
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
         const { q, status, page = 1, limit = 10 } = query;
         const skip = (page - 1) * limit;
         const where = {};
@@ -47,7 +58,7 @@ let PostsService = class PostsService {
             take: limit,
             orderBy: { updatedAt: 'desc' },
         });
-        return {
+        const result = {
             items,
             meta: {
                 total,
@@ -56,12 +67,20 @@ let PostsService = class PostsService {
                 pages: Math.ceil(total / limit),
             },
         };
+        await this.redis.set(cacheKey, result, this.CACHE_TTL);
+        return result;
     }
     async findOne(id) {
+        const cacheKey = this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id });
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
         const post = await this.prisma.post.findUnique({ where: { id } });
         if (!post) {
             throw new common_1.NotFoundException(`Post with ID ${id} not found`);
         }
+        await this.redis.set(cacheKey, post, this.CACHE_TTL);
         return post;
     }
     async update(id, updatePostDto) {
@@ -69,14 +88,24 @@ let PostsService = class PostsService {
         if (updatePostDto.title && !updatePostDto.slug) {
             updatePostDto.slug = this.slugify(updatePostDto.title);
         }
-        return this.prisma.post.update({
+        const post = await this.prisma.post.update({
             where: { id },
             data: updatePostDto,
         });
+        await Promise.all([
+            this.redis.del(`${this.CACHE_PREFIX}:list`),
+            this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+        ]);
+        return post;
     }
     async remove(id) {
         await this.findOne(id);
-        return this.prisma.post.delete({ where: { id } });
+        const post = await this.prisma.post.delete({ where: { id } });
+        await Promise.all([
+            this.redis.del(`${this.CACHE_PREFIX}:list`),
+            this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+        ]);
+        return post;
     }
     slugify(text) {
         return text
@@ -91,6 +120,7 @@ let PostsService = class PostsService {
 exports.PostsService = PostsService;
 exports.PostsService = PostsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        redis_service_1.RedisService])
 ], PostsService);
 //# sourceMappingURL=posts.service.js.map

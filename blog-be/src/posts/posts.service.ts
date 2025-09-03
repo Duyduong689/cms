@@ -1,12 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { RedisService } from '../common/redis/redis.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { QueryPostDto } from './dto/query-post.dto';
 
 @Injectable()
 export class PostsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly CACHE_TTL = 60 * 5; // 5 minutes
+  private readonly CACHE_PREFIX = 'posts';
+
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   async create(createPostDto: CreatePostDto) {
     // Create a copy of the DTO to avoid modifying the original
@@ -15,16 +22,29 @@ export class PostsService {
     // Ensure slug is always defined (required by Prisma schema)
     const finalSlug = slug || this.slugify(title);
 
-    return this.prisma.post.create({
+    const post = await this.prisma.post.create({
       data: {
         title,
         slug: finalSlug,
         ...restData,
       },
     });
+
+    // Invalidate list cache when new post is created
+    await this.redis.del(`${this.CACHE_PREFIX}:list`);
+
+    return post;
   }
 
   async findAll(query: QueryPostDto) {
+    const cacheKey = this.redis.generateKey(`${this.CACHE_PREFIX}:list`, query);
+    
+    // Try to get from cache first
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const { q, status, page = 1, limit = 10 } = query;
     const skip = (page - 1) * limit;
 
@@ -53,7 +73,7 @@ export class PostsService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    return {
+    const result = {
       items,
       meta: {
         total,
@@ -62,14 +82,30 @@ export class PostsService {
         pages: Math.ceil(total / limit),
       },
     };
+
+    // Cache the result
+    await this.redis.set(cacheKey, result, this.CACHE_TTL);
+
+    return result;
   }
 
   async findOne(id: string) {
+    const cacheKey = this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id });
+    
+    // Try to get from cache first
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const post = await this.prisma.post.findUnique({ where: { id } });
     
     if (!post) {
       throw new NotFoundException(`Post with ID ${id} not found`);
     }
+
+    // Cache the post
+    await this.redis.set(cacheKey, post, this.CACHE_TTL);
     
     return post;
   }
@@ -83,17 +119,33 @@ export class PostsService {
       updatePostDto.slug = this.slugify(updatePostDto.title);
     }
 
-    return this.prisma.post.update({
+    const post = await this.prisma.post.update({
       where: { id },
       data: updatePostDto,
     });
+
+    // Invalidate both list and item cache
+    await Promise.all([
+      this.redis.del(`${this.CACHE_PREFIX}:list`),
+      this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+    ]);
+
+    return post;
   }
 
   async remove(id: string) {
     // Check if post exists
     await this.findOne(id);
     
-    return this.prisma.post.delete({ where: { id } });
+    const post = await this.prisma.post.delete({ where: { id } });
+
+    // Invalidate both list and item cache
+    await Promise.all([
+      this.redis.del(`${this.CACHE_PREFIX}:list`),
+      this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+    ]);
+
+    return post;
   }
 
   private slugify(text: string): string {
