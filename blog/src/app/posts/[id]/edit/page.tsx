@@ -10,16 +10,7 @@ import { Post } from "@/lib/api";
 import { ArrowLeft, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-
-function slugify(input: string) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[\s_]+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/--+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+import { slugify } from "@/lib/utils";
 
 export default function PostEdit({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -39,7 +30,7 @@ export default function PostEdit({ params }: { params: { id: string } }) {
 
   const save = async () => {
     try {
-      const { id, ...data } = post;
+      const { id, createdAt, updatedAt, ...data } = post;
       await updatePost.mutateAsync({ 
         id,
         ...data,
