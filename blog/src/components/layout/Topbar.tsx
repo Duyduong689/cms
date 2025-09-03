@@ -32,7 +32,7 @@ export function Topbar() {
         />
       </div>
       <div className="flex items-center gap-2">
-        <div className="text-xs text-muted-foreground hidden md:block">
+        {/* <div className="text-xs text-muted-foreground hidden md:block">
           Role
         </div>
         <select
@@ -42,7 +42,7 @@ export function Topbar() {
         >
           <option value="admin">Admin</option>
           <option value="editor">Editor</option>
-        </select>
+        </select> */}
         <Button
           variant="ghost"
           size="icon"
@@ -55,10 +55,10 @@ export function Topbar() {
             <Moon className="w-4 h-4" />
           )}
         </Button>
-        <div className="hidden md:flex items-center text-xs text-muted-foreground gap-1">
+        {/* <div className="hidden md:flex items-center text-xs text-muted-foreground gap-1">
           <Shield className="w-3 h-3" />
           {role.toUpperCase()}
-        </div>
+        </div> */}
       </div>
     </header>
   );

@@ -19,7 +19,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground">
       <div className="h-14 flex items-center px-4 border-b">
-        <div className="font-extrabold tracking-tight text-lg">Aurora CMS</div>
+        <div className="font-extrabold tracking-tight text-lg">Blog CMS</div>
       </div>
       <nav className="p-2 space-y-1">
         {nav.map((item) => {
