@@ -1,0 +1,72 @@
+import axios from 'axios';
+
+// Create axios instance with base configuration
+export const api = axios.create({
+  baseURL: 'http://localhost:3001',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Types from backend
+export interface Post {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  coverImage?: string;
+  authorId?: string;
+  tags: string[];
+  status: 'draft' | 'published';
+  metaTitle?: string;
+  metaDescription?: string;
+  openGraphImage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PostsResponse {
+  items: Post[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
+export interface QueryParams {
+  q?: string;
+  status?: 'draft' | 'published';
+  page?: number;
+  limit?: number;
+}
+
+// API functions
+export const postsApi = {
+  getAll: async (params?: QueryParams) => {
+    const { data } = await api.get<PostsResponse>('/posts', { params });
+    return data;
+  },
+
+  getById: async (id: string) => {
+    const { data } = await api.get<Post>(`/posts/${id}`);
+    return data;
+  },
+
+  create: async (post: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const { data } = await api.post<Post>('/posts', post);
+    return data;
+  },
+
+  update: async (id: string, post: Partial<Omit<Post, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    const { data } = await api.put<Post>(`/posts/${id}`, post);
+    return data;
+  },
+
+  delete: async (id: string) => {
+    const { data } = await api.delete<Post>(`/posts/${id}`);
+    return data;
+  },
+};
