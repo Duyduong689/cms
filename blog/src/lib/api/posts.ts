@@ -1,8 +1,9 @@
 import axios from 'axios';
+import httpClient from './http';
 
 // Create axios instance with base configuration
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
+  baseURL: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -46,27 +47,27 @@ export interface QueryParams {
 // API functions
 export const postsApi = {
   getAll: async (params?: QueryParams) => {
-    const { data } = await api.get<PostsResponse>('/posts', { params });
+    const  data  = await httpClient.get<PostsResponse>('/posts', { params });
     return data;
   },
 
   getById: async (id: string) => {
-    const { data } = await api.get<Post>(`/posts/${id}`);
+    const  data  = await httpClient.get<Post>(`/posts/${id}`);
     return data;
   },
 
   create: async (post: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const { data } = await api.post<Post>('/posts', post);
+    const  data  = await httpClient.post<Post>('/posts', post);
     return data;
   },
 
   update: async (id: string, post: Partial<Omit<Post, 'id' | 'createdAt' | 'updatedAt'>>) => {
-    const { data } = await api.put<Post>(`/posts/${id}`, post);
+    const  data  = await httpClient.put<Post>(`/posts/${id}`, post);
     return data;
   },
 
   delete: async (id: string) => {
-    const { data } = await api.delete<Post>(`/posts/${id}`);
+    const  data  = await httpClient.delete<Post>(`/posts/${id}`);
     return data;
   },
 };

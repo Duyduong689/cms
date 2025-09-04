@@ -11,14 +11,16 @@ const common_1 = require("@nestjs/common");
 const posts_controller_1 = require("./posts.controller");
 const posts_service_1 = require("./posts.service");
 const redis_module_1 = require("../common/redis/redis.module");
+const auth_module_1 = require("../auth/auth.module");
+const roles_guard_1 = require("../common/guards/roles.guard");
 let PostsModule = class PostsModule {
 };
 exports.PostsModule = PostsModule;
 exports.PostsModule = PostsModule = __decorate([
     (0, common_1.Module)({
-        imports: [redis_module_1.RedisModule],
+        imports: [redis_module_1.RedisModule, auth_module_1.AuthModule],
         controllers: [posts_controller_1.PostsController],
-        providers: [posts_service_1.PostsService],
+        providers: [posts_service_1.PostsService, roles_guard_1.RolesGuard],
         exports: [posts_service_1.PostsService],
     })
 ], PostsModule);

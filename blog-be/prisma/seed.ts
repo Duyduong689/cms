@@ -1,5 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role, UserStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -379,6 +380,7 @@ function randomDateWithin(daysBack: number) {
 async function main() {
   // Clean slate (adjust if you have relations)
   await prisma.post.deleteMany();
+  await prisma.user.deleteMany();
 
   // ---- base posts (your originals) ----
   const basePosts = [
@@ -570,7 +572,49 @@ cd my-blog
     skipDuplicates: true, // safety for slugs/ids if you re-run
   });
 
-  console.log(`Seeded ${posts.length} posts`);
+  // ---- seed users ----
+  const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
+  
+  const users = [
+    {
+      id: randomUUID(),
+      name: 'Admin User',
+      email: 'admin@example.com',
+      role: Role.ADMIN,
+      status: UserStatus.ACTIVE,
+      avatarUrl: 'https://example.com/avatars/admin.jpg',
+      passwordHash: await bcrypt.hash('AdminPass123!', saltRounds),
+    },
+    {
+      id: randomUUID(),
+      name: 'Staff Member',
+      email: 'staff@example.com',
+      role: Role.STAFF,
+      status: UserStatus.ACTIVE,
+      avatarUrl: 'https://example.com/avatars/staff.jpg',
+      passwordHash: await bcrypt.hash('StaffPass123!', saltRounds),
+    },
+    {
+      id: randomUUID(),
+      name: 'John Customer',
+      email: 'customer@example.com',
+      role: Role.CUSTOMER,
+      status: UserStatus.DISABLED,
+      avatarUrl: 'https://example.com/avatars/customer.jpg',
+      passwordHash: await bcrypt.hash('CustomerPass123!', saltRounds),
+    },
+  ];
+
+  await prisma.user.createMany({
+    data: users,
+    skipDuplicates: true,
+  });
+
+  console.log(`Seeded ${posts.length} posts and ${users.length} users`);
+  console.log('User credentials:');
+  console.log('- Admin: admin@example.com / AdminPass123!');
+  console.log('- Staff: staff@example.com / StaffPass123!');
+  console.log('- Customer: customer@example.com / CustomerPass123!');
 }
 
 main()

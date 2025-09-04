@@ -35,36 +35,48 @@ const CustomPagination = ({
   onPageSizeChange,
 }: PaginationProps) => {
   const paginationRange = useMemo(() => {
-    const totalPageNumbers = 7;
+    const siblingCount = 1;
+    const totalPageNumbers = siblingCount + 5; // 1 + 5 = 6 (current + siblings + first + last + 2 dots)
 
-    if (totalPageNumbers >= totalPages) {
+    // If total pages is small, show all pages
+    if (totalPages <= totalPageNumbers) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
-    const leftSiblingIndex = Math.max(page - 1, 1);
-    const rightSiblingIndex = Math.min(page + 1, totalPages);
+    const leftSiblingIndex = Math.max(page - siblingCount, 1);
+    const rightSiblingIndex = Math.min(page + siblingCount, totalPages);
 
+    // We need at least 2 pages gap to show dots (to avoid showing dots next to consecutive pages)
     const shouldShowLeftDots = leftSiblingIndex > 2;
     const shouldShowRightDots = rightSiblingIndex < totalPages - 2;
 
+    const firstPageIndex = 1;
+    const lastPageIndex = totalPages;
+
+    // Case 1: No left dots, but right dots
     if (!shouldShowLeftDots && shouldShowRightDots) {
-      const leftItemCount = 3;
+      const leftItemCount = 3 + 2 * siblingCount;
       const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
-      return [...leftRange, DOTS, totalPages - 1, totalPages];
+      return [...leftRange, DOTS, totalPages];
     }
 
+    // Case 2: Left dots, but no right dots
     if (shouldShowLeftDots && !shouldShowRightDots) {
-      const rightItemCount = 3;
+      const rightItemCount = 3 + 2 * siblingCount;
       const rightRange = Array.from(
         { length: rightItemCount },
         (_, i) => totalPages - rightItemCount + i + 1
       );
-      return [1, 2, DOTS, ...rightRange];
+      return [firstPageIndex, DOTS, ...rightRange];
     }
 
+    // Case 3: Both left and right dots
     if (shouldShowLeftDots && shouldShowRightDots) {
-      const middleRange = [leftSiblingIndex, page, rightSiblingIndex];
-      return [1, DOTS, ...middleRange, DOTS, totalPages];
+      const middleRange = Array.from(
+        { length: rightSiblingIndex - leftSiblingIndex + 1 },
+        (_, i) => leftSiblingIndex + i
+      );
+      return [firstPageIndex, DOTS, ...middleRange, DOTS, lastPageIndex];
     }
 
     return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -98,7 +110,12 @@ const CustomPagination = ({
                 <PaginationLink
                   onClick={() => onPageChange(pageNumber as number)}
                   isActive={page === pageNumber}
-                  className={cn("cursor-pointer", page === pageNumber ? "bg-primary text-primary-foreground" : "cursor-pointer")}
+                  className={cn(
+                    "cursor-pointer",
+                    page === pageNumber
+                      ? "bg-primary text-primary-foreground"
+                      : "cursor-pointer"
+                  )}
                 >
                   {pageNumber}
                 </PaginationLink>

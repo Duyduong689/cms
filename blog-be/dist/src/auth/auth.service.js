@@ -1,0 +1,270 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AuthService = void 0;
+const common_1 = require("@nestjs/common");
+const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
+const prisma_service_1 = require("../common/prisma/prisma.service");
+const redis_service_1 = require("../common/redis/redis.service");
+const password_util_1 = require("../common/utils/password.util");
+const token_util_1 = require("../common/utils/token.util");
+const crypto_1 = require("crypto");
+let AuthService = class AuthService {
+    constructor(prisma, redis, jwtService, configService) {
+        this.prisma = prisma;
+        this.redis = redis;
+        this.jwtService = jwtService;
+        this.configService = configService;
+        this.tokenUtil = new token_util_1.TokenUtil(jwtService);
+    }
+    async validateUser(email, password) {
+        const user = await this.prisma.user.findUnique({
+            where: { email: email.toLowerCase().trim() },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                status: true,
+                passwordHash: true,
+            },
+        });
+        if (!user) {
+            return null;
+        }
+        if (user.status !== 'ACTIVE') {
+            throw new common_1.UnauthorizedException('User account is disabled');
+        }
+        const isPasswordValid = await password_util_1.PasswordUtil.compare(password, user.passwordHash);
+        if (!isPasswordValid) {
+            return null;
+        }
+        const { passwordHash, ...result } = user;
+        return result;
+    }
+    async register(registerDto) {
+        const { name, email, password } = registerDto;
+        const normalizedEmail = email.toLowerCase().trim();
+        const normalizedName = name.trim();
+        const passwordValidation = password_util_1.PasswordUtil.validateStrength(password);
+        if (!passwordValidation.isValid) {
+            throw new common_1.BadRequestException(passwordValidation.errors.join(', '));
+        }
+        const existingUser = await this.prisma.user.findUnique({
+            where: { email: normalizedEmail },
+        });
+        if (existingUser) {
+            throw new common_1.ConflictException('User with this email already exists');
+        }
+        const saltRounds = this.configService.get('auth.auth.bcryptSaltRounds');
+        const passwordHash = await password_util_1.PasswordUtil.hash(password, saltRounds);
+        const user = await this.prisma.user.create({
+            data: {
+                name: normalizedName,
+                email: normalizedEmail,
+                passwordHash,
+                role: 'CUSTOMER',
+                status: 'ACTIVE',
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                status: true,
+                avatarUrl: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        return user;
+    }
+    async login(loginDto) {
+        const { email, password } = loginDto;
+        const normalizedEmail = email.toLowerCase().trim();
+        await this.checkRateLimit(normalizedEmail);
+        const user = await this.validateUser(normalizedEmail, password);
+        if (!user) {
+            await this.recordFailedAttempt(normalizedEmail);
+            throw new common_1.UnauthorizedException('Invalid credentials');
+        }
+        await this.clearFailedAttempts(normalizedEmail);
+        const tokenPayload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        };
+        const { accessToken, refreshToken, jti } = this.tokenUtil.generateTokenPair(tokenPayload);
+        const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
+        const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
+        const ttl = this.parseExpirationToSeconds(refreshExpires);
+        await this.redis.set(`${refreshPrefix}${jti}`, user.id, ttl);
+        return { accessToken, refreshToken };
+    }
+    async refresh(userId, refreshJti) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                status: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        if (user.status !== 'ACTIVE') {
+            throw new common_1.UnauthorizedException('User account is disabled');
+        }
+        const tokenPayload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        };
+        const { accessToken, refreshToken, jti } = this.tokenUtil.generateTokenPair(tokenPayload);
+        const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
+        const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
+        const ttl = this.parseExpirationToSeconds(refreshExpires);
+        await Promise.all([
+            this.redis.del(`${refreshPrefix}${refreshJti}`),
+            this.redis.set(`${refreshPrefix}${jti}`, user.id, ttl),
+        ]);
+        return { accessToken, refreshToken };
+    }
+    async logout(refreshJti) {
+        const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
+        await this.redis.del(`${refreshPrefix}${refreshJti}`);
+        return { success: true };
+    }
+    async forgotPassword(forgotPasswordDto) {
+        const { email } = forgotPasswordDto;
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await this.prisma.user.findUnique({
+            where: { email: normalizedEmail },
+            select: { id: true, status: true },
+        });
+        if (!user) {
+            return { success: true };
+        }
+        if (user.status !== 'ACTIVE') {
+            return { success: true };
+        }
+        const resetToken = (0, crypto_1.randomBytes)(32).toString('hex');
+        const resetPrefix = this.configService.get('auth.auth.resetPrefix');
+        const ttl = 30 * 60;
+        await this.redis.set(`${resetPrefix}${resetToken}`, user.id, ttl);
+        return { success: true };
+    }
+    async resetPassword(resetPasswordDto) {
+        const { token, password } = resetPasswordDto;
+        const passwordValidation = password_util_1.PasswordUtil.validateStrength(password);
+        if (!passwordValidation.isValid) {
+            throw new common_1.BadRequestException(passwordValidation.errors.join(', '));
+        }
+        const resetPrefix = this.configService.get('auth.auth.resetPrefix');
+        const userId = await this.redis.get(`${resetPrefix}${token}`);
+        if (!userId) {
+            throw new common_1.BadRequestException('Invalid or expired reset token');
+        }
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, status: true },
+        });
+        if (!user || user.status !== 'ACTIVE') {
+            throw new common_1.BadRequestException('Invalid or expired reset token');
+        }
+        const saltRounds = this.configService.get('auth.auth.bcryptSaltRounds');
+        const passwordHash = await password_util_1.PasswordUtil.hash(password, saltRounds);
+        await Promise.all([
+            this.prisma.user.update({
+                where: { id: userId },
+                data: { passwordHash },
+            }),
+            this.redis.del(`${resetPrefix}${token}`),
+        ]);
+        return { success: true };
+    }
+    async getProfile(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                status: true,
+                avatarUrl: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('User not found');
+        }
+        return user;
+    }
+    decodeRefreshToken(token) {
+        try {
+            return this.tokenUtil.verifyRefreshToken(token);
+        }
+        catch (error) {
+            return null;
+        }
+    }
+    async checkRateLimit(email) {
+        const maxAttempts = this.configService.get('auth.auth.loginMaxAttempts');
+        const windowMin = this.configService.get('auth.auth.loginWindowMin');
+        const rateLimitKey = `auth:login:${email}`;
+        const attempts = await this.redis.get(rateLimitKey);
+        const attemptCount = attempts ? parseInt(attempts, 10) : 0;
+        if (attemptCount >= maxAttempts) {
+            throw new common_1.UnauthorizedException(`Too many login attempts. Please try again in ${windowMin} minutes.`);
+        }
+    }
+    async recordFailedAttempt(email) {
+        const windowMin = this.configService.get('auth.auth.loginWindowMin');
+        const rateLimitKey = `auth:login:${email}`;
+        const ttl = windowMin * 60;
+        const attempts = await this.redis.get(rateLimitKey);
+        const attemptCount = attempts ? parseInt(attempts, 10) : 0;
+        await this.redis.set(rateLimitKey, (attemptCount + 1).toString(), ttl);
+    }
+    async clearFailedAttempts(email) {
+        const rateLimitKey = `auth:login:${email}`;
+        await this.redis.del(rateLimitKey);
+    }
+    parseExpirationToSeconds(expiration) {
+        const match = expiration.match(/^(\d+)([smhd])$/);
+        if (!match) {
+            return 7 * 24 * 60 * 60;
+        }
+        const value = parseInt(match[1], 10);
+        const unit = match[2];
+        switch (unit) {
+            case 's': return value;
+            case 'm': return value * 60;
+            case 'h': return value * 60 * 60;
+            case 'd': return value * 24 * 60 * 60;
+            default: return 7 * 24 * 60 * 60;
+        }
+    }
+};
+exports.AuthService = AuthService;
+exports.AuthService = AuthService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        redis_service_1.RedisService,
+        jwt_1.JwtService,
+        config_1.ConfigService])
+], AuthService);
+//# sourceMappingURL=auth.service.js.map

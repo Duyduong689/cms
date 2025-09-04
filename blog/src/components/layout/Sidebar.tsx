@@ -1,13 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Home, Newspaper, User, Tag, Settings } from "lucide-react";
+import { Home, Newspaper, User, Tag, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/posts", label: "Posts", icon: Newspaper },
+  { to: "/users", label: "Users", icon: Users },
   { to: "/categories", label: "Categories", icon: Tag },
   { to: "/authors", label: "Authors", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },

@@ -3,8 +3,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Eye, FileText, Plus, Tags, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useMe } from "@/hooks/use-auth";
 
 
 interface PostListItem {
@@ -20,44 +22,25 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ posts: 0, drafts: 0, published: 0 });
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const r = await fetch("/api/posts?limit=5&sort=updatedAt.desc");
-        if (r.ok) {
-          const isJson = (r.headers.get("content-type") || "").includes(
-            "application/json"
-          );
-          if (!isJson) {
-            setRecent([]);
-          } else {
-            const data = await r.json();
-            setRecent(Array.isArray(data.items) ? data.items : []);
-            setStats({
-              posts: data.total ?? data.items?.length ?? 0,
-              drafts: (data.items ?? []).filter(
-                (p: PostListItem) => p.status === "draft"
-              ).length,
-              published: (data.items ?? []).filter(
-                (p: PostListItem) => p.status === "published"
-              ).length,
-            });
-          }
-        } else {
-          setRecent([]);
-        }
-      } catch (e) {
-        console.error("Failed to load dashboard posts:", e);
-        setRecent([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
-
+  const { data: user, isLoading: isAuthLoading, isError } = useMe();
   const skeletonRows = useMemo(() => new Array(5).fill(0), []);
+
+  // Handle loading state - all hooks are called above this point
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error or no user - return empty div instead of null
+  if (isError || !user) {
+    return <div></div>; // Protected layout will handle redirect
+  }
 
   return (
     <div>
@@ -67,18 +50,20 @@ export default function Home() {
             Blog CMS Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage posts, categories, authors, tags and SEO.
+            Welcome back, {user.name}! Manage posts, categories, authors, tags and SEO.
           </p>
         </div>
-        <Button asChild>
-          <a href="/posts#new">
-            <Plus className="w-4 h-4 mr-2" />
-            New Post
-          </a>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild>
+            <a href="/posts#new">
+              <Plus className="w-4 h-4 mr-2" />
+              New Post
+            </a>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">
@@ -109,6 +94,16 @@ export default function Home() {
             {stats.drafts}
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">
+              User Role
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold text-green-600">
+            {user.role}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -137,16 +132,16 @@ export default function Home() {
                   skeletonRows.map((_, i) => (
                     <tr key={i} className="border-b">
                       <td className="py-2">
-                        <div className="h-4 bg-muted rounded w-3/4" />
+                        <Skeleton className="h-4 w-3/4" />
                       </td>
                       <td className="py-2">
-                        <div className="h-4 bg-muted rounded w-1/2" />
+                        <Skeleton className="h-4 w-1/2" />
                       </td>
                       <td className="py-2">
-                        <div className="h-5 bg-muted rounded w-20" />
+                        <Skeleton className="h-5 w-20" />
                       </td>
                       <td className="py-2">
-                        <div className="h-4 bg-muted rounded w-24" />
+                        <Skeleton className="h-4 w-24" />
                       </td>
                     </tr>
                   ))}

@@ -48,3 +48,30 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+enum Role {
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id           String      @id @default(uuid())
+  name         String
+  email        String      @unique
+  role         Role        @default(CUSTOMER)
+  status       UserStatus  @default(ACTIVE)
+  avatarUrl    String?
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}

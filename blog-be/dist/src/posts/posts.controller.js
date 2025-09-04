@@ -20,11 +20,15 @@ const create_post_dto_1 = require("./dto/create-post.dto");
 const update_post_dto_1 = require("./dto/update-post.dto");
 const query_post_dto_1 = require("./dto/query-post.dto");
 const post_entity_1 = require("./entities/post.entity");
+const jwt_access_guard_1 = require("../auth/guards/jwt-access.guard");
+const roles_guard_1 = require("../common/guards/roles.guard");
+const roles_decorator_1 = require("../common/decorators/roles.decorator");
+const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 let PostsController = class PostsController {
     constructor(postsService) {
         this.postsService = postsService;
     }
-    create(createPostDto) {
+    create(createPostDto, user) {
         return this.postsService.create(createPostDto);
     }
     findAll(query) {
@@ -33,25 +37,34 @@ let PostsController = class PostsController {
     findOne(id) {
         return this.postsService.findOne(id);
     }
-    update(id, updatePostDto) {
+    update(id, updatePostDto, user) {
         return this.postsService.update(id, updatePostDto);
     }
-    remove(id) {
+    remove(id, user) {
         return this.postsService.remove(id);
     }
 };
 exports.PostsController = PostsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN', 'STAFF'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Create a new post' }),
     (0, swagger_1.ApiCreatedResponse)({ type: post_entity_1.Post }),
+    (0, swagger_1.ApiUnauthorizedResponse)({ description: 'Invalid or missing authentication token' }),
+    (0, swagger_1.ApiForbiddenResponse)({ description: 'Insufficient permissions to create posts' }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_post_dto_1.CreatePostDto]),
+    __metadata("design:paramtypes", [create_post_dto_1.CreatePostDto, Object]),
     __metadata("design:returntype", void 0)
 ], PostsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN', 'STAFF'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get all posts with pagination and filtering' }),
     (0, swagger_1.ApiOkResponse)({ description: 'Returns posts with pagination metadata' }),
     __param(0, (0, common_1.Query)()),
@@ -61,6 +74,9 @@ __decorate([
 ], PostsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN', 'STAFF'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Get a post by ID' }),
     (0, swagger_1.ApiOkResponse)({ type: post_entity_1.Post }),
     __param(0, (0, common_1.Param)('id')),
@@ -70,21 +86,33 @@ __decorate([
 ], PostsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN', 'STAFF'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Update a post' }),
     (0, swagger_1.ApiOkResponse)({ type: post_entity_1.Post }),
+    (0, swagger_1.ApiUnauthorizedResponse)({ description: 'Invalid or missing authentication token' }),
+    (0, swagger_1.ApiForbiddenResponse)({ description: 'Insufficient permissions to update posts' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_post_dto_1.UpdatePostDto]),
+    __metadata("design:paramtypes", [String, update_post_dto_1.UpdatePostDto, Object]),
     __metadata("design:returntype", void 0)
 ], PostsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN'),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, swagger_1.ApiOperation)({ summary: 'Delete a post' }),
     (0, swagger_1.ApiOkResponse)({ type: post_entity_1.Post }),
+    (0, swagger_1.ApiUnauthorizedResponse)({ description: 'Invalid or missing authentication token' }),
+    (0, swagger_1.ApiForbiddenResponse)({ description: 'Insufficient permissions to delete posts' }),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], PostsController.prototype, "remove", null);
 exports.PostsController = PostsController = __decorate([

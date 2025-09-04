@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sun, Moon, Shield } from "lucide-react";
+import { Sun, Moon, Shield, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMe, useLogout } from "@/hooks/use-auth";
 
 export type Role = "admin" | "editor";
 
@@ -14,6 +15,9 @@ export function Topbar() {
     () => (localStorage.getItem("role") as Role) || "admin",
   );
 
+  const { data: user } = useMe();
+  const logoutMutation = useLogout();
+
   useEffect(() => {
     localStorage.setItem("role", role);
   }, [role]);
@@ -22,6 +26,10 @@ export function Topbar() {
     if (theme === "dark") document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
   }, [theme]);
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   return (
     <header className="h-14 border-b flex items-center gap-4 px-4 bg-background">
@@ -32,17 +40,17 @@ export function Topbar() {
         />
       </div>
       <div className="flex items-center gap-2">
-        {/* <div className="text-xs text-muted-foreground hidden md:block">
+        <div className="text-xs text-muted-foreground hidden md:block">
           Role
         </div>
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
-          className="px-2 py-1 border rounded-md bg-background"
+          className="px-2 py-1 border rounded-md bg-background text-sm"
         >
           <option value="admin">Admin</option>
           <option value="editor">Editor</option>
-        </select> */}
+        </select>
         <Button
           variant="ghost"
           size="icon"
@@ -55,10 +63,20 @@ export function Topbar() {
             <Moon className="w-4 h-4" />
           )}
         </Button>
-        {/* <div className="hidden md:flex items-center text-xs text-muted-foreground gap-1">
+        <div className="hidden md:flex items-center text-xs text-muted-foreground gap-1">
           <Shield className="w-3 h-3" />
-          {role.toUpperCase()}
-        </div> */}
+          {user?.role?.toUpperCase() || role.toUpperCase()}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          disabled={logoutMutation.isPending}
+          className="gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          {logoutMutation.isPending ? "Logging out..." : "Logout"}
+        </Button>
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Post, QueryParams, postsApi } from "@/lib/api";
+import { Post, QueryParams, postsApi } from "@/lib/api/posts";
 import { toast } from "sonner";
 
 // Query keys
