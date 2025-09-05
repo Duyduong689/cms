@@ -35,13 +35,24 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       throw new UnauthorizedException('Missing JTI in refresh token');
     }
 
-    // Check if refresh session exists in Redis
-    const refreshPrefix = this.configService.get<string>('auth.auth.refreshPrefix');
-    const sessionKey = `${refreshPrefix}${payload.jti}`;
-    const sessionUserId = await this.redis.get(sessionKey);
+    if (!payload.sid) {
+      throw new UnauthorizedException('Missing session ID in refresh token');
+    }
 
-    if (!sessionUserId || sessionUserId !== payload.sub) {
+    // Check if refresh token exists in Redis
+    const refreshPrefix = this.configService.get<string>('auth.auth.refreshPrefix');
+    const refreshKey = `${refreshPrefix}${payload.jti}`;
+    const refreshData = await this.redis.get(refreshKey) as { userId: string; sessionId: string } | null;
+
+    if (!refreshData || refreshData.userId !== payload.sub || refreshData.sessionId !== payload.sid) {
       throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Check if session still exists
+    const sessionPrefix = this.configService.get<string>('auth.auth.sessionPrefix');
+    const sessionExists = await this.redis.exists(`${sessionPrefix}${payload.sid}`);
+    if (!sessionExists) {
+      throw new UnauthorizedException('Session no longer valid');
     }
 
     // Check if user still exists and is active
@@ -69,6 +80,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       email: user.email,
       role: user.role,
       type: 'refresh',
+      sid: payload.sid,
       jti: payload.jti,
     };
   }

@@ -6,12 +6,21 @@ export interface JwtPayload {
   email: string;
   role: string;
   type: 'access' | 'refresh';
-  jti?: string; // JWT ID for refresh tokens
+  sid: string; // sessionId
+  jti?: string; // JWT ID
+}
+
+export interface SessionData {
+  userId: string;
+  userAgent?: string;
+  ipAddress?: string;
+  createdAt: Date;
 }
 
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+  sessionId: string;
 }
 
 export class TokenUtil {
@@ -20,11 +29,13 @@ export class TokenUtil {
   /**
    * Generate access token
    */
-  generateAccessToken(payload: Omit<JwtPayload, 'type' | 'jti'>): string {
-    return this.jwtService.sign(
-      { ...payload, type: 'access' },
+  generateAccessToken(payload: Omit<JwtPayload, 'type' | 'jti'>): { token: string; jti: string } {
+    const jti = randomUUID();
+    const token = this.jwtService.sign(
+      { ...payload, type: 'access', jti },
       { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
     );
+    return { token, jti };
   }
 
   /**
@@ -40,16 +51,19 @@ export class TokenUtil {
   }
 
   /**
-   * Generate token pair
+   * Generate token pair with session
    */
-  generateTokenPair(payload: Omit<JwtPayload, 'type' | 'jti'>): TokenPair & { jti: string } {
-    const accessToken = this.generateAccessToken(payload);
-    const { token: refreshToken, jti } = this.generateRefreshToken(payload);
+  generateTokenPair(payload: Omit<JwtPayload, 'type' | 'jti'>): TokenPair & { refreshJti: string; accessJti: string } {
+    const sessionId = payload.sid;
+    const { token: accessToken, jti: accessJti } = this.generateAccessToken(payload);
+    const { token: refreshToken, jti: refreshJti } = this.generateRefreshToken(payload);
     
     return {
       accessToken,
       refreshToken,
-      jti,
+      sessionId,
+      refreshJti, // refresh token JTI
+      accessJti, // access token JTI
     };
   }
 
@@ -86,5 +100,20 @@ export class TokenUtil {
       return null;
     }
     return authHeader.substring(7);
+  }
+
+  /**
+   * Calculate remaining TTL for a JWT token
+   */
+  static calculateRemainingTtl(token: string): number {
+    try {
+      const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      const expirationTime = decoded.exp * 1000; // Convert to milliseconds
+      const currentTime = Date.now();
+      const remainingMs = expirationTime - currentTime;
+      return Math.max(0, Math.ceil(remainingMs / 1000)); // Return seconds
+    } catch {
+      return 0;
+    }
   }
 }

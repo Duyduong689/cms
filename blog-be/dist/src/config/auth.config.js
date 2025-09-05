@@ -14,8 +14,10 @@ exports.default = (0, config_1.registerAs)('auth', () => ({
         password: process.env.REDIS_PASSWORD,
     },
     auth: {
+        sessionPrefix: process.env.AUTH_SESSION_PREFIX || 'auth:sess:',
         refreshPrefix: process.env.AUTH_REFRESH_PREFIX || 'auth:refresh:',
         resetPrefix: process.env.AUTH_RESET_PREFIX || 'auth:reset:',
+        blockedPrefix: process.env.AUTH_BLOCKED_PREFIX || 'auth:block:',
         bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10),
         loginMaxAttempts: parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5', 10),
         loginWindowMin: parseInt(process.env.LOGIN_WINDOW_MIN || '15', 10),

@@ -124,8 +124,14 @@ export class AuthController {
       },
     },
   })
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = await this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const userAgent = req.get('User-Agent');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const { accessToken, refreshToken } = await this.authService.login(loginDto, userAgent, ipAddress);
     
     // Set httpOnly cookies
     res.cookie('accessToken', accessToken, {
@@ -175,7 +181,7 @@ export class AuthController {
     },
   })
   async refresh(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = await this.authService.refresh(user.sub, user.jti!);
+    const { accessToken, refreshToken } = await this.authService.refresh(user.sub, user.jti!, user.sid);
     
     // Set new httpOnly cookies
     res.cookie('accessToken', accessToken, {
@@ -211,20 +217,43 @@ export class AuthController {
     },
   })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    // Try to extract refresh token from cookies
+    // Try to extract both tokens from cookies
     const refreshToken = req.cookies?.refreshToken;
+    const accessToken = req.cookies?.accessToken;
     
+    let sessionId: string | undefined;
+    let refreshJti: string | undefined;
+    
+    // Extract session ID and refresh JTI from tokens
     if (refreshToken) {
       try {
-        // Decode the refresh token to get JTI
         const payload = this.authService.decodeRefreshToken(refreshToken);
+        if (payload?.sid) {
+          sessionId = payload.sid;
+        }
         if (payload?.jti) {
-          await this.authService.logout(payload.jti);
+          refreshJti = payload.jti;
         }
       } catch (error) {
-        // If token is invalid/expired, continue with cookie clearing
-        console.log('Failed to revoke refresh token:', error.message);
+        console.log('Failed to decode refresh token:', error.message);
       }
+    }
+    
+    // If no session ID from refresh token, try access token
+    if (!sessionId && accessToken) {
+      try {
+        const payload = this.authService.decodeAccessToken(accessToken);
+        if (payload?.sid) {
+          sessionId = payload.sid;
+        }
+      } catch (error) {
+        console.log('Failed to decode access token:', error.message);
+      }
+    }
+    
+    // Logout with session-based approach
+    if (sessionId) {
+      await this.authService.logout(sessionId, refreshJti, accessToken);
     }
     
     // Always clear httpOnly cookies regardless of token validity

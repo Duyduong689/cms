@@ -15,8 +15,9 @@ const passport_1 = require("@nestjs/passport");
 const passport_jwt_1 = require("passport-jwt");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../../common/prisma/prisma.service");
+const redis_service_1 = require("../../common/redis/redis.service");
 let JwtAccessStrategy = class JwtAccessStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy, 'jwt-access') {
-    constructor(configService, prisma) {
+    constructor(configService, prisma, redis) {
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromExtractors([
                 (request) => {
@@ -28,10 +29,26 @@ let JwtAccessStrategy = class JwtAccessStrategy extends (0, passport_1.PassportS
         });
         this.configService = configService;
         this.prisma = prisma;
+        this.redis = redis;
     }
     async validate(payload) {
         if (payload.type !== 'access') {
             throw new common_1.UnauthorizedException('Invalid token type');
+        }
+        if (!payload.sid) {
+            throw new common_1.UnauthorizedException('Missing session ID in token');
+        }
+        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        const sessionExists = await this.redis.exists(`${sessionPrefix}${payload.sid}`);
+        if (!sessionExists) {
+            throw new common_1.UnauthorizedException('Session revoked');
+        }
+        if (payload.jti) {
+            const blockedPrefix = this.configService.get('auth.auth.blockedPrefix');
+            const isBlocked = await this.redis.get(`${blockedPrefix}${payload.jti}`);
+            if (isBlocked) {
+                throw new common_1.UnauthorizedException('Token has been revoked');
+            }
         }
         const user = await this.prisma.user.findUnique({
             where: { id: payload.sub },
@@ -53,6 +70,8 @@ let JwtAccessStrategy = class JwtAccessStrategy extends (0, passport_1.PassportS
             email: user.email,
             role: user.role,
             type: 'access',
+            sid: payload.sid,
+            jti: payload.jti,
         };
     }
 };
@@ -60,6 +79,7 @@ exports.JwtAccessStrategy = JwtAccessStrategy;
 exports.JwtAccessStrategy = JwtAccessStrategy = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService,
-        prisma_service_1.PrismaService])
+        prisma_service_1.PrismaService,
+        redis_service_1.RedisService])
 ], JwtAccessStrategy);
 //# sourceMappingURL=jwt-access.strategy.js.map

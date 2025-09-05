@@ -18,6 +18,19 @@ export class RedisService {
     await this.cacheManager.del(key);
   }
 
+  async exists(key: string): Promise<boolean> {
+    const value = await this.cacheManager.get(key);
+    return value !== undefined;
+  }
+
+  async expire(key: string, ttl: number): Promise<void> {
+    // Get the current value and reset it with new TTL
+    const value = await this.cacheManager.get(key);
+    if (value !== undefined) {
+      await this.cacheManager.set(key, value, ttl);
+    }
+  }
+
 
   generateKey(prefix: string, params: Record<string, any>): string {
     const sortedParams = Object.keys(params)

@@ -38,11 +38,19 @@ let JwtRefreshStrategy = class JwtRefreshStrategy extends (0, passport_1.Passpor
         if (!payload.jti) {
             throw new common_1.UnauthorizedException('Missing JTI in refresh token');
         }
+        if (!payload.sid) {
+            throw new common_1.UnauthorizedException('Missing session ID in refresh token');
+        }
         const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
-        const sessionKey = `${refreshPrefix}${payload.jti}`;
-        const sessionUserId = await this.redis.get(sessionKey);
-        if (!sessionUserId || sessionUserId !== payload.sub) {
+        const refreshKey = `${refreshPrefix}${payload.jti}`;
+        const refreshData = await this.redis.get(refreshKey);
+        if (!refreshData || refreshData.userId !== payload.sub || refreshData.sessionId !== payload.sid) {
             throw new common_1.UnauthorizedException('Invalid or expired refresh token');
+        }
+        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        const sessionExists = await this.redis.exists(`${sessionPrefix}${payload.sid}`);
+        if (!sessionExists) {
+            throw new common_1.UnauthorizedException('Session no longer valid');
         }
         const user = await this.prisma.user.findUnique({
             where: { id: payload.sub },
@@ -64,6 +72,7 @@ let JwtRefreshStrategy = class JwtRefreshStrategy extends (0, passport_1.Passpor
             email: user.email,
             role: user.role,
             type: 'refresh',
+            sid: payload.sid,
             jti: payload.jti,
         };
     }

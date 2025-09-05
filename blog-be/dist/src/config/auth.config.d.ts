@@ -11,8 +11,10 @@ export interface AuthConfig {
         password?: string;
     };
     auth: {
+        sessionPrefix: string;
         refreshPrefix: string;
         resetPrefix: string;
+        blockedPrefix: string;
         bcryptSaltRounds: number;
         loginMaxAttempts: number;
         loginWindowMin: number;

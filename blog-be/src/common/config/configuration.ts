@@ -18,6 +18,8 @@ export const configuration = () => ({
       auth: {
         refreshPrefix: process.env.AUTH_REFRESH_PREFIX,
         resetPrefix: process.env.AUTH_RESET_PREFIX,
+        sessionPrefix: process.env.AUTH_SESSION_PREFIX,
+        blockedPrefix: process.env.AUTH_BLOCKED_PREFIX,
         bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 10,
         loginMaxAttempts: parseInt(process.env.LOGIN_MAX_ATTEMPTS, 10) || 5,
         loginWindowMin: parseInt(process.env.LOGIN_WINDOW_MIN, 10) || 15,

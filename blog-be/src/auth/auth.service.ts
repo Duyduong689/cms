@@ -10,13 +10,13 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { RedisService } from '../common/redis/redis.service';
 import { PasswordUtil } from '../common/utils/password.util';
-import { TokenUtil, JwtPayload } from '../common/utils/token.util';
+import { TokenUtil, JwtPayload, SessionData } from '../common/utils/token.util';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -119,9 +119,72 @@ export class AuthService {
   }
 
   /**
+   * Create a new session
+   */
+  private async createSession(
+    userId: string,
+    userAgent?: string,
+    ipAddress?: string,
+  ): Promise<string> {
+    const sessionId = randomUUID();
+    const sessionPrefix = this.configService.get<string>('auth.auth.sessionPrefix');
+    const refreshExpires = this.configService.get<string>('auth.jwt.refreshExpires');
+    const ttl = this.parseExpirationToSeconds(refreshExpires);
+
+    const sessionData: SessionData = {
+      userId,
+      userAgent,
+      ipAddress,
+      createdAt: new Date(),
+    };
+
+    await this.redis.set(`${sessionPrefix}${sessionId}`, sessionData, ttl);
+    return sessionId;
+  }
+
+  /**
+   * Validate session exists
+   */
+  private async validateSession(sessionId: string): Promise<SessionData | null> {
+    const sessionPrefix = this.configService.get<string>('auth.auth.sessionPrefix');
+    const sessionData = await this.redis.get(`${sessionPrefix}${sessionId}`) as SessionData | null;
+    return sessionData;
+  }
+
+  /**
+   * Delete session
+   */
+  private async deleteSession(sessionId: string): Promise<void> {
+    const sessionPrefix = this.configService.get<string>('auth.auth.sessionPrefix');
+    await this.redis.del(`${sessionPrefix}${sessionId}`);
+  }
+
+  /**
+   * Block access token by adding to denylist
+   */
+  private async blockAccessToken(accessToken: string): Promise<void> {
+    try {
+      const payload = this.tokenUtil.verifyAccessToken(accessToken);
+      if (payload.jti) {
+        const blockedPrefix = this.configService.get<string>('auth.auth.blockedPrefix');
+        const remainingTtl = TokenUtil.calculateRemainingTtl(accessToken);
+        if (remainingTtl > 0) {
+          await this.redis.set(`${blockedPrefix}${payload.jti}`, 'revoked', remainingTtl);
+        }
+      }
+    } catch (error) {
+      // Token might be expired or invalid, ignore
+    }
+  }
+
+  /**
    * Login user with rate limiting
    */
-  async login(loginDto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
+  async login(
+    loginDto: LoginDto,
+    userAgent?: string,
+    ipAddress?: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const { email, password } = loginDto;
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -138,21 +201,25 @@ export class AuthService {
     // Clear failed attempts on successful login
     await this.clearFailedAttempts(normalizedEmail);
 
-    // Generate tokens
+    // Create session
+    const sessionId = await this.createSession(user.id, userAgent, ipAddress);
+
+    // Generate tokens with session ID
     const tokenPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      sid: sessionId,
     };
 
-    const { accessToken, refreshToken, jti } = this.tokenUtil.generateTokenPair(tokenPayload);
+    const { accessToken, refreshToken, refreshJti, accessJti } = this.tokenUtil.generateTokenPair(tokenPayload);
 
-    // Store refresh token in Redis
+    // Store refresh token mapping in Redis
     const refreshPrefix = this.configService.get<string>('auth.auth.refreshPrefix');
     const refreshExpires = this.configService.get<string>('auth.jwt.refreshExpires');
     const ttl = this.parseExpirationToSeconds(refreshExpires);
     
-    await this.redis.set(`${refreshPrefix}${jti}`, user.id, ttl);
+    await this.redis.set(`${refreshPrefix}${refreshJti}`, { userId: user.id, sessionId }, ttl);
 
     return { accessToken, refreshToken };
   }
@@ -160,7 +227,12 @@ export class AuthService {
   /**
    * Refresh access token
    */
-  async refresh(userId: string, refreshJti: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async refresh(userId: string, refreshJti: string, sessionId: string): Promise<{ accessToken: string; refreshToken: string }> {
+    // Validate session still exists
+    const sessionData = await this.validateSession(sessionId);
+    if (!sessionData || sessionData.userId !== userId) {
+      throw new UnauthorizedException('Session no longer valid');
+    }
     // Get user details
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -187,28 +259,54 @@ export class AuthService {
       role: user.role,
     };
 
-    const { accessToken, refreshToken, jti } = this.tokenUtil.generateTokenPair(tokenPayload);
+    const tokenPayloadWithSession = {
+      ...tokenPayload,
+      sid: sessionId,
+    };
+
+    const { accessToken, refreshToken, refreshJti: newRefreshJti, accessJti } = this.tokenUtil.generateTokenPair(tokenPayloadWithSession);
 
     // Rotate refresh token (delete old, store new)
     const refreshPrefix = this.configService.get<string>('auth.auth.refreshPrefix');
     const refreshExpires = this.configService.get<string>('auth.jwt.refreshExpires');
     const ttl = this.parseExpirationToSeconds(refreshExpires);
 
+    // Update session TTL and rotate refresh token
+    const sessionPrefix = this.configService.get<string>('auth.auth.sessionPrefix');
     await Promise.all([
-      this.redis.del(`${refreshPrefix}${refreshJti}`), // Delete old token
-      this.redis.set(`${refreshPrefix}${jti}`, user.id, ttl), // Store new token
+      this.redis.del(`${refreshPrefix}${refreshJti}`), // Delete old refresh token
+      this.redis.set(`${refreshPrefix}${newRefreshJti}`, { userId: user.id, sessionId }, ttl), // Store new refresh token
+      this.redis.expire(`${sessionPrefix}${sessionId}`, ttl), // Extend session TTL
     ]);
 
     return { accessToken, refreshToken };
   }
 
   /**
-   * Logout user (revoke refresh token)
+   * Logout user (revoke session and tokens)
    */
-  async logout(refreshJti: string): Promise<{ success: boolean }> {
-    const refreshPrefix = this.configService.get<string>('auth.auth.refreshPrefix');
-    await this.redis.del(`${refreshPrefix}${refreshJti}`);
-    
+  async logout(
+    sessionId: string,
+    refreshJti?: string,
+    accessToken?: string,
+  ): Promise<{ success: boolean }> {
+    const promises: Promise<any>[] = [];
+
+    // Delete session (this invalidates all tokens with this sessionId)
+    promises.push(this.deleteSession(sessionId));
+
+    // Delete refresh token if provided
+    if (refreshJti) {
+      const refreshPrefix = this.configService.get<string>('auth.auth.refreshPrefix');
+      promises.push(this.redis.del(`${refreshPrefix}${refreshJti}`));
+    }
+
+    // Block access token if provided
+    if (accessToken) {
+      promises.push(this.blockAccessToken(accessToken));
+    }
+
+    await Promise.allSettled(promises);
     return { success: true };
   }
 
@@ -325,11 +423,23 @@ export class AuthService {
    */
   decodeRefreshToken(token: string): JwtPayload | null {
     try {
-      return this.tokenUtil.verifyRefreshToken(token);
+      return this.jwtService.decode(token) as JwtPayload;
     } catch (error) {
       return null;
     }
   }
+
+  /**
+   * Decode access token without validation
+   */
+  decodeAccessToken(token: string): JwtPayload | null {
+    try {
+      return this.jwtService.decode(token) as JwtPayload;
+    } catch (error) {
+      return null;
+    }
+  }
+
 
   /**
    * Check rate limit for login attempts

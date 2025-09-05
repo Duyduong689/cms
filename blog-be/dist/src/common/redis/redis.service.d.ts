@@ -5,5 +5,7 @@ export declare class RedisService {
     get<T>(key: string): Promise<T | undefined>;
     set(key: string, value: any, ttl?: number): Promise<void>;
     del(key: string): Promise<void>;
+    exists(key: string): Promise<boolean>;
+    expire(key: string, ttl: number): Promise<void>;
     generateKey(prefix: string, params: Record<string, any>): string;
 }

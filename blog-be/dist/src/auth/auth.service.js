@@ -88,7 +88,44 @@ let AuthService = class AuthService {
         });
         return user;
     }
-    async login(loginDto) {
+    async createSession(userId, userAgent, ipAddress) {
+        const sessionId = (0, crypto_1.randomUUID)();
+        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
+        const ttl = this.parseExpirationToSeconds(refreshExpires);
+        const sessionData = {
+            userId,
+            userAgent,
+            ipAddress,
+            createdAt: new Date(),
+        };
+        await this.redis.set(`${sessionPrefix}${sessionId}`, sessionData, ttl);
+        return sessionId;
+    }
+    async validateSession(sessionId) {
+        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        const sessionData = await this.redis.get(`${sessionPrefix}${sessionId}`);
+        return sessionData;
+    }
+    async deleteSession(sessionId) {
+        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        await this.redis.del(`${sessionPrefix}${sessionId}`);
+    }
+    async blockAccessToken(accessToken) {
+        try {
+            const payload = this.tokenUtil.verifyAccessToken(accessToken);
+            if (payload.jti) {
+                const blockedPrefix = this.configService.get('auth.auth.blockedPrefix');
+                const remainingTtl = token_util_1.TokenUtil.calculateRemainingTtl(accessToken);
+                if (remainingTtl > 0) {
+                    await this.redis.set(`${blockedPrefix}${payload.jti}`, 'revoked', remainingTtl);
+                }
+            }
+        }
+        catch (error) {
+        }
+    }
+    async login(loginDto, userAgent, ipAddress) {
         const { email, password } = loginDto;
         const normalizedEmail = email.toLowerCase().trim();
         await this.checkRateLimit(normalizedEmail);
@@ -98,19 +135,25 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
         await this.clearFailedAttempts(normalizedEmail);
+        const sessionId = await this.createSession(user.id, userAgent, ipAddress);
         const tokenPayload = {
             sub: user.id,
             email: user.email,
             role: user.role,
+            sid: sessionId,
         };
-        const { accessToken, refreshToken, jti } = this.tokenUtil.generateTokenPair(tokenPayload);
+        const { accessToken, refreshToken, refreshJti, accessJti } = this.tokenUtil.generateTokenPair(tokenPayload);
         const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
         const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
         const ttl = this.parseExpirationToSeconds(refreshExpires);
-        await this.redis.set(`${refreshPrefix}${jti}`, user.id, ttl);
+        await this.redis.set(`${refreshPrefix}${refreshJti}`, { userId: user.id, sessionId }, ttl);
         return { accessToken, refreshToken };
     }
-    async refresh(userId, refreshJti) {
+    async refresh(userId, refreshJti, sessionId) {
+        const sessionData = await this.validateSession(sessionId);
+        if (!sessionData || sessionData.userId !== userId) {
+            throw new common_1.UnauthorizedException('Session no longer valid');
+        }
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -131,19 +174,33 @@ let AuthService = class AuthService {
             email: user.email,
             role: user.role,
         };
-        const { accessToken, refreshToken, jti } = this.tokenUtil.generateTokenPair(tokenPayload);
+        const tokenPayloadWithSession = {
+            ...tokenPayload,
+            sid: sessionId,
+        };
+        const { accessToken, refreshToken, refreshJti: newRefreshJti, accessJti } = this.tokenUtil.generateTokenPair(tokenPayloadWithSession);
         const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
         const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
         const ttl = this.parseExpirationToSeconds(refreshExpires);
+        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
         await Promise.all([
             this.redis.del(`${refreshPrefix}${refreshJti}`),
-            this.redis.set(`${refreshPrefix}${jti}`, user.id, ttl),
+            this.redis.set(`${refreshPrefix}${newRefreshJti}`, { userId: user.id, sessionId }, ttl),
+            this.redis.expire(`${sessionPrefix}${sessionId}`, ttl),
         ]);
         return { accessToken, refreshToken };
     }
-    async logout(refreshJti) {
-        const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
-        await this.redis.del(`${refreshPrefix}${refreshJti}`);
+    async logout(sessionId, refreshJti, accessToken) {
+        const promises = [];
+        promises.push(this.deleteSession(sessionId));
+        if (refreshJti) {
+            const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
+            promises.push(this.redis.del(`${refreshPrefix}${refreshJti}`));
+        }
+        if (accessToken) {
+            promises.push(this.blockAccessToken(accessToken));
+        }
+        await Promise.allSettled(promises);
         return { success: true };
     }
     async forgotPassword(forgotPasswordDto) {
@@ -215,7 +272,15 @@ let AuthService = class AuthService {
     }
     decodeRefreshToken(token) {
         try {
-            return this.tokenUtil.verifyRefreshToken(token);
+            return this.jwtService.decode(token);
+        }
+        catch (error) {
+            return null;
+        }
+    }
+    decodeAccessToken(token) {
+        try {
+            return this.jwtService.decode(token);
         }
         catch (error) {
             return null;

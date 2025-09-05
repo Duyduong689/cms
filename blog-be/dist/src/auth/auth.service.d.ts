@@ -16,15 +16,19 @@ export declare class AuthService {
     constructor(prisma: PrismaService, redis: RedisService, jwtService: JwtService, configService: ConfigService);
     validateUser(email: string, password: string): Promise<any>;
     register(registerDto: RegisterDto): Promise<any>;
-    login(loginDto: LoginDto): Promise<{
+    private createSession;
+    private validateSession;
+    private deleteSession;
+    private blockAccessToken;
+    login(loginDto: LoginDto, userAgent?: string, ipAddress?: string): Promise<{
         accessToken: string;
         refreshToken: string;
     }>;
-    refresh(userId: string, refreshJti: string): Promise<{
+    refresh(userId: string, refreshJti: string, sessionId: string): Promise<{
         accessToken: string;
         refreshToken: string;
     }>;
-    logout(refreshJti: string): Promise<{
+    logout(sessionId: string, refreshJti?: string, accessToken?: string): Promise<{
         success: boolean;
     }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
@@ -35,6 +39,7 @@ export declare class AuthService {
     }>;
     getProfile(userId: string): Promise<any>;
     decodeRefreshToken(token: string): JwtPayload | null;
+    decodeAccessToken(token: string): JwtPayload | null;
     private checkRateLimit;
     private recordFailedAttempt;
     private clearFailedAttempts;

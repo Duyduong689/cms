@@ -18,6 +18,8 @@ export declare const configuration: () => {
         auth: {
             refreshPrefix: string;
             resetPrefix: string;
+            sessionPrefix: string;
+            blockedPrefix: string;
             bcryptSaltRounds: number;
             loginMaxAttempts: number;
             loginWindowMin: number;

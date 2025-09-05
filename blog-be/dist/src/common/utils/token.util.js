@@ -7,7 +7,9 @@ class TokenUtil {
         this.jwtService = jwtService;
     }
     generateAccessToken(payload) {
-        return this.jwtService.sign({ ...payload, type: 'access' }, { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' });
+        const jti = (0, crypto_1.randomUUID)();
+        const token = this.jwtService.sign({ ...payload, type: 'access', jti }, { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' });
+        return { token, jti };
     }
     generateRefreshToken(payload) {
         const jti = (0, crypto_1.randomUUID)();
@@ -15,12 +17,15 @@ class TokenUtil {
         return { token, jti };
     }
     generateTokenPair(payload) {
-        const accessToken = this.generateAccessToken(payload);
-        const { token: refreshToken, jti } = this.generateRefreshToken(payload);
+        const sessionId = payload.sid;
+        const { token: accessToken, jti: accessJti } = this.generateAccessToken(payload);
+        const { token: refreshToken, jti: refreshJti } = this.generateRefreshToken(payload);
         return {
             accessToken,
             refreshToken,
-            jti,
+            sessionId,
+            refreshJti,
+            accessJti,
         };
     }
     verifyAccessToken(token) {
@@ -45,6 +50,18 @@ class TokenUtil {
             return null;
         }
         return authHeader.substring(7);
+    }
+    static calculateRemainingTtl(token) {
+        try {
+            const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+            const expirationTime = decoded.exp * 1000;
+            const currentTime = Date.now();
+            const remainingMs = expirationTime - currentTime;
+            return Math.max(0, Math.ceil(remainingMs / 1000));
+        }
+        catch {
+            return 0;
+        }
     }
 }
 exports.TokenUtil = TokenUtil;

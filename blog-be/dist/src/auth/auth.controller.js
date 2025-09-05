@@ -30,8 +30,10 @@ let AuthController = class AuthController {
     async register(registerDto) {
         return this.authService.register(registerDto);
     }
-    async login(loginDto, res) {
-        const { accessToken, refreshToken } = await this.authService.login(loginDto);
+    async login(loginDto, req, res) {
+        const userAgent = req.get('User-Agent');
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        const { accessToken, refreshToken } = await this.authService.login(loginDto, userAgent, ipAddress);
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -47,7 +49,7 @@ let AuthController = class AuthController {
         return { success: true };
     }
     async refresh(user, res) {
-        const { accessToken, refreshToken } = await this.authService.refresh(user.sub, user.jti);
+        const { accessToken, refreshToken } = await this.authService.refresh(user.sub, user.jti, user.sid);
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -64,16 +66,36 @@ let AuthController = class AuthController {
     }
     async logout(req, res) {
         const refreshToken = req.cookies?.refreshToken;
+        const accessToken = req.cookies?.accessToken;
+        let sessionId;
+        let refreshJti;
         if (refreshToken) {
             try {
                 const payload = this.authService.decodeRefreshToken(refreshToken);
+                if (payload?.sid) {
+                    sessionId = payload.sid;
+                }
                 if (payload?.jti) {
-                    await this.authService.logout(payload.jti);
+                    refreshJti = payload.jti;
                 }
             }
             catch (error) {
-                console.log('Failed to revoke refresh token:', error.message);
+                console.log('Failed to decode refresh token:', error.message);
             }
+        }
+        if (!sessionId && accessToken) {
+            try {
+                const payload = this.authService.decodeAccessToken(accessToken);
+                if (payload?.sid) {
+                    sessionId = payload.sid;
+                }
+            }
+            catch (error) {
+                console.log('Failed to decode access token:', error.message);
+            }
+        }
+        if (sessionId) {
+            await this.authService.logout(sessionId, refreshJti, accessToken);
         }
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
@@ -180,9 +202,10 @@ __decorate([
         },
     }),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
 __decorate([

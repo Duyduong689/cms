@@ -28,6 +28,16 @@ let RedisService = class RedisService {
     async del(key) {
         await this.cacheManager.del(key);
     }
+    async exists(key) {
+        const value = await this.cacheManager.get(key);
+        return value !== undefined;
+    }
+    async expire(key, ttl) {
+        const value = await this.cacheManager.get(key);
+        if (value !== undefined) {
+            await this.cacheManager.set(key, value, ttl);
+        }
+    }
     generateKey(prefix, params) {
         const sortedParams = Object.keys(params)
             .sort()

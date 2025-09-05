@@ -9,7 +9,7 @@ export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
     register(registerDto: RegisterDto): Promise<any>;
-    login(loginDto: LoginDto, res: Response): Promise<{
+    login(loginDto: LoginDto, req: Request, res: Response): Promise<{
         success: boolean;
     }>;
     refresh(user: JwtPayload, res: Response): Promise<{
