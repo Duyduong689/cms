@@ -1,5 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength, Matches, Validate, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
+
+@ValidatorConstraint({ name: 'passwordMatch', async: false })
+export class PasswordMatchConstraint implements ValidatorConstraintInterface {
+  validate(confirmPassword: string, args: ValidationArguments) {
+    const object = args.object as any;
+    return confirmPassword === object.password;
+  }
+
+  defaultMessage(args: ValidationArguments) {
+    return 'Passwords do not match';
+  }
+}
 
 export class ResetPasswordDto {
   @ApiProperty({
@@ -25,4 +37,13 @@ export class ResetPasswordDto {
     },
   )
   password: string;
+
+  @ApiProperty({
+    description: 'Confirm new password',
+    example: 'NewSecurePass123!',
+  })
+  @IsString({ message: 'Confirm password must be a string' })
+  @IsNotEmpty({ message: 'Confirm password is required' })
+  @Validate(PasswordMatchConstraint)
+  confirmPassword: string;
 }

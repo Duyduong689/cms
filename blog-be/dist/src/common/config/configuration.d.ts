@@ -5,6 +5,7 @@ export declare const configuration: () => {
     redis: {
         host: string;
         port: number;
+        password: string;
         ttl: number;
         max: number;
     };
@@ -23,6 +24,10 @@ export declare const configuration: () => {
             bcryptSaltRounds: number;
             loginMaxAttempts: number;
             loginWindowMin: number;
+            forgotPasswordMaxAttempts: number;
+            forgotPasswordWindowMin: number;
+            resetTokenTtl: number;
+            appOrigin: string;
         };
     };
 };

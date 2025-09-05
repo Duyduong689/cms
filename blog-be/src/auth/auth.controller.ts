@@ -289,8 +289,13 @@ export class AuthController {
       },
     },
   })
-  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(forgotPasswordDto);
+  async forgotPassword(
+    @Body() forgotPasswordDto: ForgotPasswordDto,
+    @Req() req: Request,
+  ) {
+    const userAgent = req.get('User-Agent');
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    return this.authService.forgotPassword(forgotPasswordDto, userAgent, ipAddress);
   }
 
   @Post('reset-password')

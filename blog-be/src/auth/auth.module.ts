@@ -10,6 +10,7 @@ import { JwtAccessGuard } from './guards/jwt-access.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { RedisModule } from '../common/redis/redis.module';
+import { MailService } from './mail/mail.service';
 import authConfig from '../config/auth.config';
 
 @Module({
@@ -33,6 +34,7 @@ import authConfig from '../config/auth.config';
   controllers: [AuthController],
   providers: [
     AuthService,
+    MailService,
     JwtAccessStrategy,
     JwtRefreshStrategy,
     JwtAccessGuard,

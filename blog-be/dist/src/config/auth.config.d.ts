@@ -18,6 +18,17 @@ export interface AuthConfig {
         bcryptSaltRounds: number;
         loginMaxAttempts: number;
         loginWindowMin: number;
+        resetTokenTtl: number;
+        forgotPasswordMaxAttempts: number;
+        forgotPasswordWindowMin: number;
+    };
+    mail: {
+        brevoApiKey: string;
+        brevoSenderEmail: string;
+        brevoSenderName: string;
+    };
+    app: {
+        origin: string;
     };
 }
 declare const _default: (() => AuthConfig) & import("@nestjs/config").ConfigFactoryKeyHost<AuthConfig>;

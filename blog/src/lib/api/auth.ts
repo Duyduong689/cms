@@ -23,6 +23,10 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface ResetPasswordRequest {
+  password: string;
+}
+
 export interface RegisterResponse {
   id: string;
   name: string;

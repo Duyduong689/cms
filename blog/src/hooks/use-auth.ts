@@ -7,7 +7,8 @@ import {
   logout as logoutApi,
   me,
   register,
-  resetPassword
+  resetPassword,
+  ResetPasswordRequest
 } from "../lib/api/auth";
 import { ResetPasswordFormData } from "../lib/validations/auth";
 

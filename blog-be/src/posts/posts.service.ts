@@ -4,6 +4,7 @@ import { RedisService } from '../common/redis/redis.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { QueryPostDto } from './dto/query-post.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PostsService {
@@ -13,6 +14,7 @@ export class PostsService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private configService: ConfigService,
   ) {}
 
   async create(createPostDto: CreatePostDto) {

@@ -41,4 +41,6 @@ export declare class TokenUtil {
     verifyRefreshToken(token: string): JwtPayload;
     static extractTokenFromHeader(authHeader: string | undefined): string | null;
     static calculateRemainingTtl(token: string): number;
+    static generateResetToken(): string;
+    static buildResetUrl(appOrigin: string, token: string): string;
 }

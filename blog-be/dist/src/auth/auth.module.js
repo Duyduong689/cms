@@ -22,6 +22,7 @@ const jwt_access_guard_1 = require("./guards/jwt-access.guard");
 const jwt_refresh_guard_1 = require("./guards/jwt-refresh.guard");
 const prisma_module_1 = require("../common/prisma/prisma.module");
 const redis_module_1 = require("../common/redis/redis.module");
+const mail_service_1 = require("./mail/mail.service");
 const auth_config_1 = __importDefault(require("../config/auth.config"));
 let AuthModule = class AuthModule {
 };
@@ -47,6 +48,7 @@ exports.AuthModule = AuthModule = __decorate([
         controllers: [auth_controller_1.AuthController],
         providers: [
             auth_service_1.AuthService,
+            mail_service_1.MailService,
             jwt_access_strategy_1.JwtAccessStrategy,
             jwt_refresh_strategy_1.JwtRefreshStrategy,
             jwt_access_guard_1.JwtAccessGuard,

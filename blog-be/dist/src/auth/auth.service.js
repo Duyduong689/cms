@@ -17,14 +17,16 @@ const prisma_service_1 = require("../common/prisma/prisma.service");
 const redis_service_1 = require("../common/redis/redis.service");
 const password_util_1 = require("../common/utils/password.util");
 const token_util_1 = require("../common/utils/token.util");
+const mail_service_1 = require("./mail/mail.service");
 const crypto_1 = require("crypto");
 let AuthService = class AuthService {
-    constructor(prisma, redis, jwtService, configService) {
+    constructor(prisma, redis, jwtService, configService, mailService) {
         this.prisma = prisma;
         this.redis = redis;
         this.jwtService = jwtService;
         this.configService = configService;
-        this.tokenUtil = new token_util_1.TokenUtil(jwtService, configService.get('auth.jwt.accessSecret'), configService.get('auth.jwt.refreshSecret'), configService.get('auth.jwt.accessExpires'), configService.get('auth.jwt.refreshExpires'));
+        this.mailService = mailService;
+        this.tokenUtil = new token_util_1.TokenUtil(jwtService, configService.get("auth.jwt.accessSecret"), configService.get("auth.jwt.refreshSecret"), configService.get("auth.jwt.accessExpires"), configService.get("auth.jwt.refreshExpires"));
     }
     async validateUser(email, password) {
         const user = await this.prisma.user.findUnique({
@@ -41,8 +43,8 @@ let AuthService = class AuthService {
         if (!user) {
             return null;
         }
-        if (user.status !== 'ACTIVE') {
-            throw new common_1.UnauthorizedException('User account is disabled');
+        if (user.status !== "ACTIVE") {
+            throw new common_1.UnauthorizedException("User account is disabled");
         }
         const isPasswordValid = await password_util_1.PasswordUtil.compare(password, user.passwordHash);
         if (!isPasswordValid) {
@@ -57,23 +59,23 @@ let AuthService = class AuthService {
         const normalizedName = name.trim();
         const passwordValidation = password_util_1.PasswordUtil.validateStrength(password);
         if (!passwordValidation.isValid) {
-            throw new common_1.BadRequestException(passwordValidation.errors.join(', '));
+            throw new common_1.BadRequestException(passwordValidation.errors.join(", "));
         }
         const existingUser = await this.prisma.user.findUnique({
             where: { email: normalizedEmail },
         });
         if (existingUser) {
-            throw new common_1.ConflictException('User with this email already exists');
+            throw new common_1.ConflictException("User with this email already exists");
         }
-        const saltRounds = this.configService.get('auth.auth.bcryptSaltRounds');
+        const saltRounds = this.configService.get("auth.auth.bcryptSaltRounds");
         const passwordHash = await password_util_1.PasswordUtil.hash(password, saltRounds);
         const user = await this.prisma.user.create({
             data: {
                 name: normalizedName,
                 email: normalizedEmail,
                 passwordHash,
-                role: 'CUSTOMER',
-                status: 'ACTIVE',
+                role: "CUSTOMER",
+                status: "ACTIVE",
             },
             select: {
                 id: true,
@@ -90,8 +92,8 @@ let AuthService = class AuthService {
     }
     async createSession(userId, userAgent, ipAddress) {
         const sessionId = (0, crypto_1.randomUUID)();
-        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
-        const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
+        const sessionPrefix = this.configService.get("auth.auth.sessionPrefix");
+        const refreshExpires = this.configService.get("auth.jwt.refreshExpires");
         const ttl = this.parseExpirationToSeconds(refreshExpires);
         const sessionData = {
             userId,
@@ -103,22 +105,22 @@ let AuthService = class AuthService {
         return sessionId;
     }
     async validateSession(sessionId) {
-        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
-        const sessionData = await this.redis.get(`${sessionPrefix}${sessionId}`);
+        const sessionPrefix = this.configService.get("auth.auth.sessionPrefix");
+        const sessionData = (await this.redis.get(`${sessionPrefix}${sessionId}`));
         return sessionData;
     }
     async deleteSession(sessionId) {
-        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        const sessionPrefix = this.configService.get("auth.auth.sessionPrefix");
         await this.redis.del(`${sessionPrefix}${sessionId}`);
     }
     async blockAccessToken(accessToken) {
         try {
             const payload = this.tokenUtil.verifyAccessToken(accessToken);
             if (payload.jti) {
-                const blockedPrefix = this.configService.get('auth.auth.blockedPrefix');
+                const blockedPrefix = this.configService.get("auth.auth.blockedPrefix");
                 const remainingTtl = token_util_1.TokenUtil.calculateRemainingTtl(accessToken);
                 if (remainingTtl > 0) {
-                    await this.redis.set(`${blockedPrefix}${payload.jti}`, 'revoked', remainingTtl);
+                    await this.redis.set(`${blockedPrefix}${payload.jti}`, "revoked", remainingTtl);
                 }
             }
         }
@@ -132,7 +134,7 @@ let AuthService = class AuthService {
         const user = await this.validateUser(normalizedEmail, password);
         if (!user) {
             await this.recordFailedAttempt(normalizedEmail);
-            throw new common_1.UnauthorizedException('Invalid credentials');
+            throw new common_1.UnauthorizedException("Invalid credentials");
         }
         await this.clearFailedAttempts(normalizedEmail);
         const sessionId = await this.createSession(user.id, userAgent, ipAddress);
@@ -143,8 +145,8 @@ let AuthService = class AuthService {
             sid: sessionId,
         };
         const { accessToken, refreshToken, refreshJti, accessJti } = this.tokenUtil.generateTokenPair(tokenPayload);
-        const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
-        const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
+        const refreshPrefix = this.configService.get("auth.auth.refreshPrefix");
+        const refreshExpires = this.configService.get("auth.jwt.refreshExpires");
         const ttl = this.parseExpirationToSeconds(refreshExpires);
         await this.redis.set(`${refreshPrefix}${refreshJti}`, { userId: user.id, sessionId }, ttl);
         return { accessToken, refreshToken };
@@ -152,7 +154,7 @@ let AuthService = class AuthService {
     async refresh(userId, refreshJti, sessionId) {
         const sessionData = await this.validateSession(sessionId);
         if (!sessionData || sessionData.userId !== userId) {
-            throw new common_1.UnauthorizedException('Session no longer valid');
+            throw new common_1.UnauthorizedException("Session no longer valid");
         }
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -164,10 +166,10 @@ let AuthService = class AuthService {
             },
         });
         if (!user) {
-            throw new common_1.NotFoundException('User not found');
+            throw new common_1.NotFoundException("User not found");
         }
-        if (user.status !== 'ACTIVE') {
-            throw new common_1.UnauthorizedException('User account is disabled');
+        if (user.status !== "ACTIVE") {
+            throw new common_1.UnauthorizedException("User account is disabled");
         }
         const tokenPayload = {
             sub: user.id,
@@ -178,11 +180,11 @@ let AuthService = class AuthService {
             ...tokenPayload,
             sid: sessionId,
         };
-        const { accessToken, refreshToken, refreshJti: newRefreshJti, accessJti } = this.tokenUtil.generateTokenPair(tokenPayloadWithSession);
-        const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
-        const refreshExpires = this.configService.get('auth.jwt.refreshExpires');
+        const { accessToken, refreshToken, refreshJti: newRefreshJti, accessJti, } = this.tokenUtil.generateTokenPair(tokenPayloadWithSession);
+        const refreshPrefix = this.configService.get("auth.auth.refreshPrefix");
+        const refreshExpires = this.configService.get("auth.jwt.refreshExpires");
         const ttl = this.parseExpirationToSeconds(refreshExpires);
-        const sessionPrefix = this.configService.get('auth.auth.sessionPrefix');
+        const sessionPrefix = this.configService.get("auth.auth.sessionPrefix");
         await Promise.all([
             this.redis.del(`${refreshPrefix}${refreshJti}`),
             this.redis.set(`${refreshPrefix}${newRefreshJti}`, { userId: user.id, sessionId }, ttl),
@@ -194,7 +196,7 @@ let AuthService = class AuthService {
         const promises = [];
         promises.push(this.deleteSession(sessionId));
         if (refreshJti) {
-            const refreshPrefix = this.configService.get('auth.auth.refreshPrefix');
+            const refreshPrefix = this.configService.get("auth.auth.refreshPrefix");
             promises.push(this.redis.del(`${refreshPrefix}${refreshJti}`));
         }
         if (accessToken) {
@@ -203,44 +205,56 @@ let AuthService = class AuthService {
         await Promise.allSettled(promises);
         return { success: true };
     }
-    async forgotPassword(forgotPasswordDto) {
+    async forgotPassword(forgotPasswordDto, userAgent, ipAddress) {
         const { email } = forgotPasswordDto;
         const normalizedEmail = email.toLowerCase().trim();
+        await this.checkForgotPasswordRateLimit(normalizedEmail, ipAddress);
+        await this.recordForgotPasswordAttempt(normalizedEmail, ipAddress);
         const user = await this.prisma.user.findUnique({
             where: { email: normalizedEmail },
-            select: { id: true, status: true },
+            select: { id: true, name: true, status: true },
         });
         if (!user) {
             return { success: true };
         }
-        if (user.status !== 'ACTIVE') {
+        if (user.status !== "ACTIVE") {
             return { success: true };
         }
-        const resetToken = (0, crypto_1.randomBytes)(32).toString('hex');
-        const resetPrefix = this.configService.get('auth.auth.resetPrefix');
-        const ttl = 30 * 60;
+        const resetToken = token_util_1.TokenUtil.generateResetToken();
+        const resetPrefix = this.configService.get("auth.auth.resetPrefix");
+        const ttl = this.configService.get("auth.auth.resetTokenTtl");
         await this.redis.set(`${resetPrefix}${resetToken}`, user.id, ttl);
+        const keys = await this.redis.get(`${resetPrefix}${resetToken}`);
+        console.log(keys, "keys");
+        const appOrigin = this.configService.get("auth.app.origin");
+        const resetUrl = token_util_1.TokenUtil.buildResetUrl(appOrigin, resetToken);
+        try {
+            await this.mailService.sendPasswordResetEmail(normalizedEmail, user.name, resetUrl);
+        }
+        catch (error) {
+            console.error("Failed to send password reset email:", error);
+        }
         return { success: true };
     }
     async resetPassword(resetPasswordDto) {
         const { token, password } = resetPasswordDto;
         const passwordValidation = password_util_1.PasswordUtil.validateStrength(password);
         if (!passwordValidation.isValid) {
-            throw new common_1.BadRequestException(passwordValidation.errors.join(', '));
+            throw new common_1.BadRequestException(passwordValidation.errors.join(", "));
         }
-        const resetPrefix = this.configService.get('auth.auth.resetPrefix');
-        const userId = await this.redis.get(`${resetPrefix}${token}`);
+        const resetPrefix = this.configService.get("auth.auth.resetPrefix");
+        const userId = (await this.redis.get(`${resetPrefix}${token}`));
         if (!userId) {
-            throw new common_1.BadRequestException('Invalid or expired reset token');
+            throw new common_1.BadRequestException("Invalid or expired reset token");
         }
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: { id: true, status: true },
         });
-        if (!user || user.status !== 'ACTIVE') {
-            throw new common_1.BadRequestException('Invalid or expired reset token');
+        if (!user || user.status !== "ACTIVE") {
+            throw new common_1.BadRequestException("Invalid or expired reset token");
         }
-        const saltRounds = this.configService.get('auth.auth.bcryptSaltRounds');
+        const saltRounds = this.configService.get("auth.auth.bcryptSaltRounds");
         const passwordHash = await password_util_1.PasswordUtil.hash(password, saltRounds);
         await Promise.all([
             this.prisma.user.update({
@@ -249,6 +263,7 @@ let AuthService = class AuthService {
             }),
             this.redis.del(`${resetPrefix}${token}`),
         ]);
+        await this.revokeAllUserSessions(userId);
         return { success: true };
     }
     async getProfile(userId) {
@@ -266,7 +281,7 @@ let AuthService = class AuthService {
             },
         });
         if (!user) {
-            throw new common_1.NotFoundException('User not found');
+            throw new common_1.NotFoundException("User not found");
         }
         return user;
     }
@@ -287,26 +302,67 @@ let AuthService = class AuthService {
         }
     }
     async checkRateLimit(email) {
-        const maxAttempts = this.configService.get('auth.auth.loginMaxAttempts');
-        const windowMin = this.configService.get('auth.auth.loginWindowMin');
+        const maxAttempts = this.configService.get("auth.auth.loginMaxAttempts");
+        const windowMin = this.configService.get("auth.auth.loginWindowMin");
         const rateLimitKey = `auth:login:${email}`;
-        const attempts = await this.redis.get(rateLimitKey);
+        const attempts = (await this.redis.get(rateLimitKey));
         const attemptCount = attempts ? parseInt(attempts, 10) : 0;
         if (attemptCount >= maxAttempts) {
             throw new common_1.UnauthorizedException(`Too many login attempts. Please try again in ${windowMin} minutes.`);
         }
     }
     async recordFailedAttempt(email) {
-        const windowMin = this.configService.get('auth.auth.loginWindowMin');
+        const windowMin = this.configService.get("auth.auth.loginWindowMin");
         const rateLimitKey = `auth:login:${email}`;
         const ttl = windowMin * 60;
-        const attempts = await this.redis.get(rateLimitKey);
+        const attempts = (await this.redis.get(rateLimitKey));
         const attemptCount = attempts ? parseInt(attempts, 10) : 0;
         await this.redis.set(rateLimitKey, (attemptCount + 1).toString(), ttl);
     }
     async clearFailedAttempts(email) {
         const rateLimitKey = `auth:login:${email}`;
         await this.redis.del(rateLimitKey);
+    }
+    async checkForgotPasswordRateLimit(email, ipAddress) {
+        const maxAttempts = this.configService.get("auth.auth.forgotPasswordMaxAttempts");
+        const windowMin = this.configService.get("auth.auth.forgotPasswordWindowMin");
+        const emailKey = `auth:forgot:${email}`;
+        const emailAttempts = (await this.redis.get(emailKey));
+        const emailAttemptCount = emailAttempts ? parseInt(emailAttempts, 10) : 0;
+        let ipAttemptCount = 0;
+        if (ipAddress) {
+            const ipKey = `auth:forgot:ip:${ipAddress}`;
+            const ipAttempts = (await this.redis.get(ipKey));
+            ipAttemptCount = ipAttempts ? parseInt(ipAttempts, 10) : 0;
+        }
+        if (emailAttemptCount >= maxAttempts || ipAttemptCount >= maxAttempts) {
+            throw new common_1.UnauthorizedException(`Too many password reset attempts. Please try again in ${windowMin} minutes.`);
+        }
+    }
+    async recordForgotPasswordAttempt(email, ipAddress) {
+        const windowMin = this.configService.get("auth.auth.forgotPasswordWindowMin");
+        const ttl = windowMin * 60;
+        const promises = [];
+        const emailKey = `auth:forgot:${email}`;
+        const emailAttempts = (await this.redis.get(emailKey));
+        const emailAttemptCount = emailAttempts ? parseInt(emailAttempts, 10) : 0;
+        promises.push(this.redis.set(emailKey, (emailAttemptCount + 1).toString(), ttl));
+        if (ipAddress) {
+            const ipKey = `auth:forgot:ip:${ipAddress}`;
+            const ipAttempts = (await this.redis.get(ipKey));
+            const ipAttemptCount = ipAttempts ? parseInt(ipAttempts, 10) : 0;
+            promises.push(this.redis.set(ipKey, (ipAttemptCount + 1).toString(), ttl));
+        }
+        await Promise.all(promises);
+    }
+    async revokeAllUserSessions(userId) {
+        const sessionPrefix = this.configService.get("auth.auth.sessionPrefix");
+        try {
+            console.log(`Sessions for user ${userId} should be revoked`);
+        }
+        catch (error) {
+            console.error("Failed to revoke user sessions:", error);
+        }
     }
     parseExpirationToSeconds(expiration) {
         const match = expiration.match(/^(\d+)([smhd])$/);
@@ -316,11 +372,16 @@ let AuthService = class AuthService {
         const value = parseInt(match[1], 10);
         const unit = match[2];
         switch (unit) {
-            case 's': return value;
-            case 'm': return value * 60;
-            case 'h': return value * 60 * 60;
-            case 'd': return value * 24 * 60 * 60;
-            default: return 7 * 24 * 60 * 60;
+            case "s":
+                return value;
+            case "m":
+                return value * 60;
+            case "h":
+                return value * 60 * 60;
+            case "d":
+                return value * 24 * 60 * 60;
+            default:
+                return 7 * 24 * 60 * 60;
         }
     }
 };
@@ -330,6 +391,7 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         redis_service_1.RedisService,
         jwt_1.JwtService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        mail_service_1.MailService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

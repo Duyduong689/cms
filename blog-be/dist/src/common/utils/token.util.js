@@ -73,6 +73,12 @@ class TokenUtil {
             return 0;
         }
     }
+    static generateResetToken() {
+        return (0, crypto_1.randomBytes)(32).toString('base64url');
+    }
+    static buildResetUrl(appOrigin, token) {
+        return `${appOrigin}/reset-password/${token}`;
+    }
 }
 exports.TokenUtil = TokenUtil;
 //# sourceMappingURL=token.util.js.map

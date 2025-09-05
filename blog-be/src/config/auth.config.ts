@@ -20,6 +20,17 @@ export interface AuthConfig {
     bcryptSaltRounds: number;
     loginMaxAttempts: number;
     loginWindowMin: number;
+    resetTokenTtl: number;
+    forgotPasswordMaxAttempts: number;
+    forgotPasswordWindowMin: number;
+  };
+  mail: {
+    brevoApiKey: string;
+    brevoSenderEmail: string;
+    brevoSenderName: string;
+  };
+  app: {
+    origin: string;
   };
 }
 
@@ -43,5 +54,16 @@ export default registerAs('auth', (): AuthConfig => ({
     bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10),
     loginMaxAttempts: parseInt(process.env.LOGIN_MAX_ATTEMPTS || '5', 10),
     loginWindowMin: parseInt(process.env.LOGIN_WINDOW_MIN || '15', 10),
+    resetTokenTtl: parseInt(process.env.RESET_TOKEN_TTL || '1800', 10),
+    forgotPasswordMaxAttempts: parseInt(process.env.FORGOT_PASSWORD_MAX_ATTEMPTS || '5', 10),
+    forgotPasswordWindowMin: parseInt(process.env.FORGOT_PASSWORD_WINDOW_MIN || '15', 10),
+  },
+  mail: {
+    brevoApiKey: process.env.BREVO_API_KEY || '',
+    brevoSenderEmail: process.env.BREVO_SENDER_EMAIL || '',
+    brevoSenderName: process.env.BREVO_SENDER_NAME || 'Blog CMS',
+  },
+  app: {
+    origin: process.env.APP_ORIGIN || 'http://localhost:3000',
   },
 }));

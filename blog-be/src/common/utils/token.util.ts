@@ -1,5 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 
 export interface JwtPayload {
   sub: string; // userId
@@ -127,5 +127,20 @@ export class TokenUtil {
     } catch {
       return 0;
     }
+  }
+
+  /**
+   * Generate a secure random token for password reset
+   */
+  static generateResetToken(): string {
+    // Generate 32 random bytes and encode as base64url
+    return randomBytes(32).toString('base64url');
+  }
+
+  /**
+   * Build password reset URL
+   */
+  static buildResetUrl(appOrigin: string, token: string): string {
+    return `${appOrigin}/reset-password/${token}`;
   }
 }

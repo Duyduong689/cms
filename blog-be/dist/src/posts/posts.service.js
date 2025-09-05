@@ -13,10 +13,12 @@ exports.PostsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../common/prisma/prisma.service");
 const redis_service_1 = require("../common/redis/redis.service");
+const config_1 = require("@nestjs/config");
 let PostsService = class PostsService {
-    constructor(prisma, redis) {
+    constructor(prisma, redis, configService) {
         this.prisma = prisma;
         this.redis = redis;
+        this.configService = configService;
         this.CACHE_TTL = 60 * 5;
         this.CACHE_PREFIX = 'posts';
     }
@@ -121,6 +123,7 @@ exports.PostsService = PostsService;
 exports.PostsService = PostsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        config_1.ConfigService])
 ], PostsService);
 //# sourceMappingURL=posts.service.js.map

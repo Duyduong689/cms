@@ -9,9 +9,22 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ResetPasswordDto = void 0;
+exports.ResetPasswordDto = exports.PasswordMatchConstraint = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+let PasswordMatchConstraint = class PasswordMatchConstraint {
+    validate(confirmPassword, args) {
+        const object = args.object;
+        return confirmPassword === object.password;
+    }
+    defaultMessage(args) {
+        return 'Passwords do not match';
+    }
+};
+exports.PasswordMatchConstraint = PasswordMatchConstraint;
+exports.PasswordMatchConstraint = PasswordMatchConstraint = __decorate([
+    (0, class_validator_1.ValidatorConstraint)({ name: 'passwordMatch', async: false })
+], PasswordMatchConstraint);
 class ResetPasswordDto {
 }
 exports.ResetPasswordDto = ResetPasswordDto;
@@ -38,4 +51,14 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "password", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Confirm new password',
+        example: 'NewSecurePass123!',
+    }),
+    (0, class_validator_1.IsString)({ message: 'Confirm password must be a string' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Confirm password is required' }),
+    (0, class_validator_1.Validate)(PasswordMatchConstraint),
+    __metadata("design:type", String)
+], ResetPasswordDto.prototype, "confirmPassword", void 0);
 //# sourceMappingURL=reset-password.dto.js.map

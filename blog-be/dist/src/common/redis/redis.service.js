@@ -11,31 +11,136 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+var RedisService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedisService = void 0;
-const cache_manager_1 = require("@nestjs/cache-manager");
 const common_1 = require("@nestjs/common");
-let RedisService = class RedisService {
-    constructor(cacheManager) {
-        this.cacheManager = cacheManager;
+const ioredis_1 = __importDefault(require("ioredis"));
+let RedisService = RedisService_1 = class RedisService {
+    constructor(redis) {
+        this.redis = redis;
+        this.logger = new common_1.Logger(RedisService_1.name);
+        this.testConnection();
+    }
+    async testConnection() {
+        try {
+            await this.redis.set('test:connection', 'ok', 'EX', 1);
+            const result = await this.redis.get('test:connection');
+            if (result === 'ok') {
+                this.logger.log('Redis connection established successfully');
+                await this.redis.del('test:connection');
+            }
+            else {
+                this.logger.error('Redis connection test failed - value not retrieved');
+            }
+        }
+        catch (error) {
+            this.logger.error('Redis connection failed:', error.message);
+        }
     }
     async get(key) {
-        return this.cacheManager.get(key);
+        try {
+            const value = await this.redis.get(key);
+            if (value === null) {
+                return undefined;
+            }
+            return JSON.parse(value);
+        }
+        catch (error) {
+            this.logger.error(`Failed to get key ${key}:`, error.message);
+            return undefined;
+        }
     }
     async set(key, value, ttl) {
-        await this.cacheManager.set(key, value, ttl);
+        try {
+            const serializedValue = JSON.stringify(value);
+            if (ttl) {
+                await this.redis.set(key, serializedValue, 'EX', ttl);
+            }
+            else {
+                await this.redis.set(key, serializedValue);
+            }
+            this.logger.debug(`Set key ${key} with TTL ${ttl || 'no expiration'}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to set key ${key}:`, error.message);
+            throw error;
+        }
     }
     async del(key) {
-        await this.cacheManager.del(key);
+        try {
+            const result = await this.redis.del(key);
+            this.logger.debug(`Deleted key ${key} (${result} keys removed)`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to delete key ${key}:`, error.message);
+            throw error;
+        }
     }
     async exists(key) {
-        const value = await this.cacheManager.get(key);
-        return value !== undefined;
+        try {
+            const result = await this.redis.exists(key);
+            return result === 1;
+        }
+        catch (error) {
+            this.logger.error(`Failed to check existence of key ${key}:`, error.message);
+            return false;
+        }
     }
     async expire(key, ttl) {
-        const value = await this.cacheManager.get(key);
-        if (value !== undefined) {
-            await this.cacheManager.set(key, value, ttl);
+        try {
+            const result = await this.redis.expire(key, ttl);
+            if (result === 1) {
+                this.logger.debug(`Updated TTL for key ${key} to ${ttl} seconds`);
+            }
+            else {
+                this.logger.warn(`Key ${key} does not exist or TTL update failed`);
+            }
+        }
+        catch (error) {
+            this.logger.error(`Failed to update TTL for key ${key}:`, error.message);
+            throw error;
+        }
+    }
+    async getTTL(key) {
+        try {
+            const ttl = await this.redis.ttl(key);
+            return ttl;
+        }
+        catch (error) {
+            this.logger.error(`Failed to get TTL for key ${key}:`, error.message);
+            return -1;
+        }
+    }
+    async keys(pattern) {
+        try {
+            return await this.redis.keys(pattern);
+        }
+        catch (error) {
+            this.logger.error(`Failed to get keys with pattern ${pattern}:`, error.message);
+            return [];
+        }
+    }
+    async flushAll() {
+        try {
+            await this.redis.flushall();
+            this.logger.warn('All Redis keys have been flushed');
+        }
+        catch (error) {
+            this.logger.error('Failed to flush all keys:', error.message);
+            throw error;
+        }
+    }
+    async ping() {
+        try {
+            return await this.redis.ping();
+        }
+        catch (error) {
+            this.logger.error('Redis ping failed:', error.message);
+            throw error;
         }
     }
     generateKey(prefix, params) {
@@ -51,9 +156,9 @@ let RedisService = class RedisService {
     }
 };
 exports.RedisService = RedisService;
-exports.RedisService = RedisService = __decorate([
+exports.RedisService = RedisService = RedisService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, common_1.Inject)(cache_manager_1.CACHE_MANAGER)),
-    __metadata("design:paramtypes", [Object])
+    __param(0, (0, common_1.Inject)('REDIS')),
+    __metadata("design:paramtypes", [ioredis_1.default])
 ], RedisService);
 //# sourceMappingURL=redis.service.js.map

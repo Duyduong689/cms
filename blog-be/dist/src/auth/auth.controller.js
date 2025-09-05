@@ -101,8 +101,10 @@ let AuthController = class AuthController {
         res.clearCookie('refreshToken');
         return { success: true };
     }
-    async forgotPassword(forgotPasswordDto) {
-        return this.authService.forgotPassword(forgotPasswordDto);
+    async forgotPassword(forgotPasswordDto, req) {
+        const userAgent = req.get('User-Agent');
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        return this.authService.forgotPassword(forgotPasswordDto, userAgent, ipAddress);
     }
     async resetPassword(resetPasswordDto) {
         return this.authService.resetPassword(resetPasswordDto);
@@ -294,8 +296,9 @@ __decorate([
         },
     }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto]),
+    __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "forgotPassword", null);
 __decorate([
