@@ -38,7 +38,8 @@ export const RegisterForm = () => {
   const passwordStrength = calculatePasswordStrength(password);
 
   const handleSubmit = (data: RegisterFormData) => {
-    registerMutation.mutate(data);
+    const { confirmPassword, ...rest } = data;
+    registerMutation.mutate(rest);
   };
 
   return (

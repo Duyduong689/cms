@@ -7,6 +7,7 @@ export const userSchema = z.object({
   email: z.string().email("Invalid email address").toLowerCase().trim(),
   role: z.enum([USER_ROLES.ADMIN, USER_ROLES.STAFF, USER_ROLES.CUSTOMER]),
   status: z.enum([USER_STATUSES.ACTIVE, USER_STATUSES.DISABLED]),
+  avatarUrl: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -16,13 +17,19 @@ export const userCreateSchema = z.object({
   email: z.string().email("Invalid email address").toLowerCase().trim(),
   role: z.enum([USER_ROLES.ADMIN, USER_ROLES.STAFF, USER_ROLES.CUSTOMER]).default(USER_ROLES.CUSTOMER),
   status: z.enum([USER_STATUSES.ACTIVE, USER_STATUSES.DISABLED]).default(USER_STATUSES.ACTIVE),
+  avatarUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 export const userUpdateSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(80, "Name must be less than 80 characters").optional(),
-  email: z.string().email("Invalid email address").toLowerCase().trim().optional(),
+  email: z.string().email("Invalid email address").toLowerCase().trim(),
   role: z.enum([USER_ROLES.ADMIN, USER_ROLES.STAFF, USER_ROLES.CUSTOMER]).optional(),
   status: z.enum([USER_STATUSES.ACTIVE, USER_STATUSES.DISABLED]).optional(),
+  avatarUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  newPassword: z.string().optional().refine(
+    (val) => !val || val.length >= 6,
+    { message: "Password must be at least 6 characters" }
+  ),
 });
 
 export const userFormSchema = userCreateSchema;

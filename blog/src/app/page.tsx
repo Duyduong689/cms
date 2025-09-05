@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Eye, FileText, Plus, Tags, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useMe } from "@/hooks/use-auth";
+import Link from "next/link";
 
 
 interface PostListItem {
@@ -110,10 +111,10 @@ export default function Home() {
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-lg">Recent Activity</CardTitle>
           <Button variant="ghost" asChild>
-            <a href="/posts">
+            <Link href="/posts">
               <Eye className="w-4 h-4 mr-2" />
               View all
-            </a>
+            </Link>
           </Button>
         </CardHeader>
         <CardContent>

@@ -37,6 +37,10 @@ export interface PostsResponse {
   };
 }
 
+export interface PostResponse extends Post {
+  
+}
+
 export interface QueryParams {
   q?: string;
   status?: 'draft' | 'published';
@@ -52,7 +56,7 @@ export const postsApi = {
   },
 
   getById: async (id: string) => {
-    const  data  = await httpClient.get<Post>(`/posts/${id}`);
+    const  data  = await httpClient.get<Post, PostResponse>(`/posts/${id}`);
     return data;
   },
 

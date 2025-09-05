@@ -18,6 +18,7 @@ const defaultValues: Partial<UserFormValues> = {
   email: "",
   role: DEFAULT_USER_VALUES.role,
   status: DEFAULT_USER_VALUES.status,
+  avatarUrl: "",
 };
 
 export default function NewUser() {
@@ -31,7 +32,13 @@ export default function NewUser() {
 
   const onSubmit = async (data: UserFormValues) => {
     try {
-      const result = await createUser.mutateAsync(data);
+      // Remove empty avatar URL
+      const submitData = { ...data };
+      if (!submitData.avatarUrl) {
+        delete submitData.avatarUrl;
+      }
+      
+      const result = await createUser.mutateAsync(submitData);
       router.push(`/users/${result.id}`);
     } catch (error) {
       console.error('Save error:', error);
@@ -87,6 +94,24 @@ export default function NewUser() {
                     <Input 
                       type="email"
                       placeholder="user@example.com" 
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="avatarUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Avatar URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="url"
+                      placeholder="https://example.com/avatar.jpg" 
                       {...field}
                     />
                   </FormControl>

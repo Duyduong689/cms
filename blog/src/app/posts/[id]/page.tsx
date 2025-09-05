@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ImageWrapper } from "@/components/ui/image-wrapper";
 import { usePost } from "@/hooks/use-posts";
 import { mdToHtml } from "@/lib/utils";
 import { ArrowLeft, Edit } from "lucide-react";
@@ -29,7 +30,7 @@ export default function PostView({ params }: { params: { id: string } }) {
       <div className="bg-card text-card-foreground rounded-lg shadow-lg overflow-hidden">
         {post.coverImage && (
           <div className="h-64 overflow-hidden bg-muted">
-            <img src={post.coverImage} alt="cover" className="w-full h-full object-cover"/>
+            <ImageWrapper src={post.coverImage} alt="cover" className="w-full h-full object-cover"/>
           </div>
         )}
         <div className="p-6 space-y-4">

@@ -22,9 +22,10 @@ export const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
       router.replace("/");
     }
     // If not authenticated and not on auth pages, redirect to login
-    else if ((isError || !user) && !pathname.startsWith("/login") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
-      router.replace("/login");
-    }
+    // else if ((isError || !user) && !pathname.startsWith("/login") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
+    //   console.log("Redirecting to login");
+    //   router.replace("/login");
+    // }
   }, [user, isError, pathname, router]);
 
   // Show loading spinner while checking authentication

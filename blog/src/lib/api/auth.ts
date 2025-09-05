@@ -1,6 +1,5 @@
-import { httpClient } from './http';
-import { LoginFormData, RegisterFormData, ForgotPasswordFormData, ResetPasswordFormData } from '../validations/auth';
-import { setAccessToken } from '../auth/token';
+import { ForgotPasswordFormData, LoginFormData, ResetPasswordFormData } from '../validations/auth';
+import httpClient from './http-with-refresh';
 
 // Response types
 export interface User {
@@ -16,6 +15,12 @@ export interface User {
 
 export interface LoginResponse {
   success: boolean;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
 }
 
 export interface RegisterResponse {
@@ -34,7 +39,7 @@ export interface AuthSuccessResponse {
 }
 
 // API functions
-export const register = async (data: RegisterFormData): Promise<RegisterResponse> => {
+export const register = async (data: RegisterRequest): Promise<RegisterResponse> => {
   return httpClient.post('/auth/register', data) as Promise<RegisterResponse>;
 };
 

@@ -88,7 +88,19 @@ export default function UserView({ params }: { params: { id: string } }) {
       <div className="bg-card text-card-foreground rounded-lg shadow-lg overflow-hidden">
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">{user.name}</h1>
+            <div className="flex items-center gap-4">
+              {user.avatarUrl && (
+                <img 
+                  src={user.avatarUrl} 
+                  alt={user.name} 
+                  className="w-16 h-16 rounded-full object-cover border-2 border-border"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+              <h1 className="text-3xl font-bold">{user.name}</h1>
+            </div>
             <div className="flex gap-2">
               <Badge variant={USER_ROLE_BADGE_VARIANTS[user.role]}>
                 {USER_ROLE_LABELS[user.role]}

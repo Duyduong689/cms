@@ -2,13 +2,13 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -18,24 +18,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  Eye, 
-  Pencil, 
-  Trash2, 
-  MoreHorizontal, 
-  Shield, 
-  Ban, 
-  RefreshCcw 
+import {
+  Eye,
+  Pencil,
+  Trash2,
+  MoreHorizontal,
+  Shield,
+  Ban,
+  RefreshCcw,
+  User as UserIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { User } from "@/lib/schemas/user";
-import { 
-  USER_ROLE_LABELS, 
-  USER_STATUS_LABELS, 
-  USER_ROLE_BADGE_VARIANTS, 
-  USER_STATUS_BADGE_VARIANTS 
+import {
+  USER_ROLE_LABELS,
+  USER_STATUS_LABELS,
+  USER_ROLE_BADGE_VARIANTS,
+  USER_STATUS_BADGE_VARIANTS,
 } from "@/lib/constants/user";
+import { ImageWrapper } from "@/components/ui/image-wrapper";
 
 interface UserActionsProps {
   user: User;
@@ -44,7 +46,12 @@ interface UserActionsProps {
   onResetPassword: (id: string) => void;
 }
 
-const UserActions = ({ user, onDelete, onToggleStatus, onResetPassword }: UserActionsProps) => {
+const UserActions = ({
+  user,
+  onDelete,
+  onToggleStatus,
+  onResetPassword,
+}: UserActionsProps) => {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -75,12 +82,14 @@ const UserActions = ({ user, onDelete, onToggleStatus, onResetPassword }: UserAc
             <Eye className="mr-2 h-4 w-4" />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push(`/users/${user.id}/edit`)}>
+          <DropdownMenuItem
+            onClick={() => router.push(`/users/${user.id}/edit`)}
+          >
             <Pencil className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleToggleStatus}>
-            {user.status === 'ACTIVE' ? (
+            {user.status === "ACTIVE" ? (
               <>
                 <Ban className="mr-2 h-4 w-4" />
                 Disable
@@ -96,7 +105,7 @@ const UserActions = ({ user, onDelete, onToggleStatus, onResetPassword }: UserAc
             <RefreshCcw className="mr-2 h-4 w-4" />
             Reset Password
           </DropdownMenuItem>
-          <DropdownMenuItem 
+          <DropdownMenuItem
             onClick={() => setShowDeleteDialog(true)}
             className="text-destructive"
           >
@@ -111,13 +120,17 @@ const UserActions = ({ user, onDelete, onToggleStatus, onResetPassword }: UserAc
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user{" "}
-              <strong>{user.name}</strong> and remove their data from our servers.
+              This action cannot be undone. This will permanently delete the
+              user <strong>{user.name}</strong> and remove their data from our
+              servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -134,9 +147,29 @@ export const createUserColumns = (
 ) => {
   return [
     {
+      header: "Avatar",
+      cell: (user: User) => (
+        <div className="text-muted-foreground">
+          {user.avatarUrl ? (
+            <ImageWrapper
+              src={user.avatarUrl}
+              alt={user.name}
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="rounded-full object-cover">
+              <UserIcon className="w-8 h-8" />
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
       header: "Name",
       cell: (user: User) => (
-        <div className="font-medium">{user.name}</div>
+        <div className="flex items-center gap-3">
+          <div className="font-medium">{user.name}</div>
+        </div>
       ),
     },
     {
