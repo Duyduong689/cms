@@ -3,17 +3,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TokenUtil = void 0;
 const crypto_1 = require("crypto");
 class TokenUtil {
-    constructor(jwtService) {
+    constructor(jwtService, accessSecret, refreshSecret, accessExpires, refreshExpires) {
         this.jwtService = jwtService;
+        this.accessSecret = accessSecret;
+        this.refreshSecret = refreshSecret;
+        this.accessExpires = accessExpires;
+        this.refreshExpires = refreshExpires;
     }
     generateAccessToken(payload) {
         const jti = (0, crypto_1.randomUUID)();
-        const token = this.jwtService.sign({ ...payload, type: 'access', jti }, { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' });
+        const token = this.jwtService.sign({ ...payload, type: 'access', jti }, {
+            secret: this.accessSecret,
+            expiresIn: this.accessExpires
+        });
         return { token, jti };
     }
     generateRefreshToken(payload) {
         const jti = (0, crypto_1.randomUUID)();
-        const token = this.jwtService.sign({ ...payload, type: 'refresh', jti }, { expiresIn: process.env.JWT_REFRESH_EXPIRES || '7d' });
+        const token = this.jwtService.sign({ ...payload, type: 'refresh', jti }, {
+            secret: this.refreshSecret,
+            expiresIn: this.refreshExpires
+        });
         return { token, jti };
     }
     generateTokenPair(payload) {
@@ -29,14 +39,14 @@ class TokenUtil {
         };
     }
     verifyAccessToken(token) {
-        const payload = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token, { secret: this.accessSecret });
         if (payload.type !== 'access') {
             throw new Error('Invalid token type');
         }
         return payload;
     }
     verifyRefreshToken(token) {
-        const payload = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token, { secret: this.refreshSecret });
         if (payload.type !== 'refresh') {
             throw new Error('Invalid token type');
         }

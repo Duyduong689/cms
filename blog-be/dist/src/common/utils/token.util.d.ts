@@ -20,7 +20,11 @@ export interface TokenPair {
 }
 export declare class TokenUtil {
     private jwtService;
-    constructor(jwtService: JwtService);
+    private accessSecret;
+    private refreshSecret;
+    private accessExpires;
+    private refreshExpires;
+    constructor(jwtService: JwtService, accessSecret: string, refreshSecret: string, accessExpires: string, refreshExpires: string);
     generateAccessToken(payload: Omit<JwtPayload, 'type' | 'jti'>): {
         token: string;
         jti: string;

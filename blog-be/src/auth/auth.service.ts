@@ -28,7 +28,13 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {
-    this.tokenUtil = new TokenUtil(jwtService);
+    this.tokenUtil = new TokenUtil(
+      jwtService,
+      configService.get<string>('auth.jwt.accessSecret')!,
+      configService.get<string>('auth.jwt.refreshSecret')!,
+      configService.get<string>('auth.jwt.accessExpires')!,
+      configService.get<string>('auth.jwt.refreshExpires')!
+    );
   }
 
   /**

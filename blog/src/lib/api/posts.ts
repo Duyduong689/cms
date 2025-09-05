@@ -1,5 +1,5 @@
 import axios from 'axios';
-import httpClient from './http';
+import httpClient from './http-with-refresh';
 
 // Create axios instance with base configuration
 export const api = axios.create({

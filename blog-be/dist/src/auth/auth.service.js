@@ -24,7 +24,7 @@ let AuthService = class AuthService {
         this.redis = redis;
         this.jwtService = jwtService;
         this.configService = configService;
-        this.tokenUtil = new token_util_1.TokenUtil(jwtService);
+        this.tokenUtil = new token_util_1.TokenUtil(jwtService, configService.get('auth.jwt.accessSecret'), configService.get('auth.jwt.refreshSecret'), configService.get('auth.jwt.accessExpires'), configService.get('auth.jwt.refreshExpires'));
     }
     async validateUser(email, password) {
         const user = await this.prisma.user.findUnique({

@@ -19,6 +19,7 @@ import authConfig from '../config/auth.config';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
+        // Default secret for access tokens - TokenUtil will handle refresh tokens separately
         secret: configService.get<string>('auth.jwt.accessSecret'),
         signOptions: {
           expiresIn: configService.get<string>('auth.jwt.accessExpires'),

@@ -24,7 +24,13 @@ export interface TokenPair {
 }
 
 export class TokenUtil {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private accessSecret: string,
+    private refreshSecret: string,
+    private accessExpires: string,
+    private refreshExpires: string
+  ) {}
 
   /**
    * Generate access token
@@ -33,7 +39,10 @@ export class TokenUtil {
     const jti = randomUUID();
     const token = this.jwtService.sign(
       { ...payload, type: 'access', jti },
-      { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
+      { 
+        secret: this.accessSecret,
+        expiresIn: this.accessExpires
+      }
     );
     return { token, jti };
   }
@@ -45,7 +54,10 @@ export class TokenUtil {
     const jti = randomUUID();
     const token = this.jwtService.sign(
       { ...payload, type: 'refresh', jti },
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES || '7d' }
+      { 
+        secret: this.refreshSecret,
+        expiresIn: this.refreshExpires
+      }
     );
     return { token, jti };
   }
@@ -71,7 +83,7 @@ export class TokenUtil {
    * Verify access token
    */
   verifyAccessToken(token: string): JwtPayload {
-    const payload = this.jwtService.verify(token) as JwtPayload;
+    const payload = this.jwtService.verify(token, { secret: this.accessSecret }) as JwtPayload;
     if (payload.type !== 'access') {
       throw new Error('Invalid token type');
     }
@@ -82,7 +94,7 @@ export class TokenUtil {
    * Verify refresh token
    */
   verifyRefreshToken(token: string): JwtPayload {
-    const payload = this.jwtService.verify(token) as JwtPayload;
+    const payload = this.jwtService.verify(token, { secret: this.refreshSecret }) as JwtPayload;
     if (payload.type !== 'refresh') {
       throw new Error('Invalid token type');
     }
