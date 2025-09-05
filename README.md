@@ -357,14 +357,41 @@ Ensure all required environment variables are set in production:
 
 **Backend (.env)**
 ```env
-DATABASE_URL=postgresql://user:password@host:port/database
-REDIS_HOST=your-redis-host
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/blog_cms"
+
+# Redis Configuration
+REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-REDIS_PASSWORD=your-redis-password
-JWT_ACCESS_SECRET=your-production-access-secret
-JWT_REFRESH_SECRET=your-production-refresh-secret
+REDIS_PASSWORD=
+REDIS_TTL=3600
+REDIS_MAX_ITEMS=100
+
+# JWT Configuration
+JWT_ACCESS_SECRET=your-super-secret-access-key-change-in-production
+JWT_ACCESS_EXPIRES=15m
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
+JWT_REFRESH_EXPIRES=7d
+
+# Auth Configuration
+AUTH_SESSION_PREFIX=auth:sess:
+AUTH_REFRESH_PREFIX=auth:refresh:
+AUTH_RESET_PREFIX=auth:reset:
+AUTH_BLOCKED_PREFIX=auth:block:
+BCRYPT_SALT_ROUNDS=10
+LOGIN_MAX_ATTEMPTS=5
+LOGIN_WINDOW_MIN=15
+FORGOT_PASSWORD_MAX_ATTEMPTS=5
+FORGOT_PASSWORD_WINDOW_MIN=15
+RESET_TOKEN_TTL=1800
+
+# Email Configuration (Brevo)
 BREVO_API_KEY=your-brevo-api-key
-APP_ORIGIN=https://your-domain.com
+BREVO_SENDER_EMAIL=your-email@example.com
+BREVO_SENDER_NAME=Blog CMS
+
+# App Configuration
+APP_ORIGIN=http://localhost:3000
 ```
 
 **Frontend (.env.local)**
