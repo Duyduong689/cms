@@ -21,7 +21,7 @@ export const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
     if (user && (pathname.startsWith("/login") || pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password"))) {
       router.replace("/");
     }
-    // If not authenticated and not on auth pages, redirect to login
+    //If not authenticated and not on auth pages, redirect to login
     // else if ((isError || !user) && !pathname.startsWith("/login") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
     //   console.log("Redirecting to login");
     //   router.replace("/login");

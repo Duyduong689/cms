@@ -56,7 +56,7 @@ export default function LoginPage() {
                 Enter your email address and we'll send you a link to reset your password.
               </DialogDescription>
             </DialogHeader>
-            <ForgotPasswordForm />
+            <ForgotPasswordForm onBackToLogin={() => setForgotPasswordOpen(false)} />
             <div className="text-center text-sm">
               <Button
                 variant="link"
@@ -69,11 +69,11 @@ export default function LoginPage() {
           </DialogContent>
         </Dialog>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
+        {/* <div className="mt-6 text-center text-sm text-muted-foreground">
           <Link href="/" className="hover:text-primary">
             ← Back to home
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );
