@@ -12,26 +12,12 @@ import { AlertCircle } from "lucide-react";
 export default function ResetPasswordPage() {
   const router = useRouter();
   const params = useParams();
-  const [showLogin, setShowLogin] = useState(false);
   const token = params.token as string;
 
   const handleBackToLogin = () => {
-    setShowLogin(true);
+    router.push("/login");
   };
 
-  const handleForgotPassword = () => {
-    setShowLogin(false);
-  };
-
-  if (showLogin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          <LoginForm onForgotPassword={handleForgotPassword} />
-        </div>
-      </div>
-    );
-  }
 
   if (!token) {
     return (

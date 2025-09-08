@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,13 +20,14 @@ const password_util_1 = require("../common/utils/password.util");
 const token_util_1 = require("../common/utils/token.util");
 const mail_service_1 = require("./mail/mail.service");
 const crypto_1 = require("crypto");
-let AuthService = class AuthService {
+let AuthService = AuthService_1 = class AuthService {
     constructor(prisma, redis, jwtService, configService, mailService) {
         this.prisma = prisma;
         this.redis = redis;
         this.jwtService = jwtService;
         this.configService = configService;
         this.mailService = mailService;
+        this.logger = new common_1.Logger(AuthService_1.name);
         this.tokenUtil = new token_util_1.TokenUtil(jwtService, configService.get("auth.jwt.accessSecret"), configService.get("auth.jwt.refreshSecret"), configService.get("auth.jwt.accessExpires"), configService.get("auth.jwt.refreshExpires"));
     }
     async validateUser(email, password) {
@@ -224,8 +226,6 @@ let AuthService = class AuthService {
         const resetPrefix = this.configService.get("auth.auth.resetPrefix");
         const ttl = this.configService.get("auth.auth.resetTokenTtl");
         await this.redis.set(`${resetPrefix}${resetToken}`, user.id, ttl);
-        const keys = await this.redis.get(`${resetPrefix}${resetToken}`);
-        console.log(keys, "keys");
         const appOrigin = this.configService.get("auth.app.origin");
         const resetUrl = token_util_1.TokenUtil.buildResetUrl(appOrigin, resetToken);
         try {
@@ -336,6 +336,7 @@ let AuthService = class AuthService {
             ipAttemptCount = ipAttempts ? parseInt(ipAttempts, 10) : 0;
         }
         if (emailAttemptCount >= maxAttempts || ipAttemptCount >= maxAttempts) {
+            this.logger.debug(`Too many password reset attempts. Please try again in ${windowMin} minutes.`);
             throw new common_1.UnauthorizedException(`Too many password reset attempts. Please try again in ${windowMin} minutes.`);
         }
     }
@@ -386,7 +387,7 @@ let AuthService = class AuthService {
     }
 };
 exports.AuthService = AuthService;
-exports.AuthService = AuthService = __decorate([
+exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         redis_service_1.RedisService,

@@ -51,6 +51,10 @@ export function Topbar() {
           <option value="admin">Admin</option>
           <option value="editor">Editor</option>
         </select> */}
+        {/* name of user */}
+        <div className="hidden md:flex items-center text-xs text-muted-foreground gap-1">
+          {user?.name || role.toUpperCase()}
+        </div>
         <Button
           variant="ghost"
           size="icon"

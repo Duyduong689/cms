@@ -17,16 +17,21 @@ export const AuthenticatedLayout = ({ children }: AuthenticatedLayoutProps) => {
   const { data: user, isLoading, isError } = useMe();
 
   useEffect(() => {
+    const onAuthPage = pathname.startsWith("/login") || pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password");
+
+    if (isLoading) return;
+
     // If user is authenticated and on auth pages, redirect to dashboard
-    if (user && (pathname.startsWith("/login") || pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password"))) {
+    if (user && onAuthPage) {
       router.replace("/");
+      return;
     }
-    //If not authenticated and not on auth pages, redirect to login
-    // else if ((isError || !user) && !pathname.startsWith("/login") && !pathname.startsWith("/forgot-password") && !pathname.startsWith("/reset-password")) {
-    //   console.log("Redirecting to login");
-    //   router.replace("/login");
-    // }
-  }, [user, isError, pathname, router]);
+
+    // If not authenticated and not on auth pages, redirect to login
+    if ((isError || !user) && !onAuthPage) {
+      router.replace("/login");
+    }
+  }, [user, isError, isLoading, pathname, router]);
 
   // Show loading spinner while checking authentication
   if (isLoading) {

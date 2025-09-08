@@ -15,6 +15,7 @@ export declare class AuthService {
     private configService;
     private mailService;
     private tokenUtil;
+    private logger;
     constructor(prisma: PrismaService, redis: RedisService, jwtService: JwtService, configService: ConfigService, mailService: MailService);
     validateUser(email: string, password: string): Promise<any>;
     register(registerDto: RegisterDto): Promise<any>;

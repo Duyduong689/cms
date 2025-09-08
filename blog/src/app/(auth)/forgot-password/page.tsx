@@ -6,7 +6,6 @@ import { ForgotPasswordForm } from "@/components/app/auth/forgot-password-form";
 import { LoginForm } from "@/components/app/auth/login-form";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
 
   const handleBackToLogin = () => {

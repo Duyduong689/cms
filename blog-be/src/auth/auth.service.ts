@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
@@ -22,14 +23,16 @@ import { randomBytes, randomUUID } from "crypto";
 @Injectable()
 export class AuthService {
   private tokenUtil: TokenUtil;
+  private logger: Logger;
 
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private mailService: MailService
+    private mailService: MailService,
   ) {
+    this.logger = new Logger(AuthService.name);
     this.tokenUtil = new TokenUtil(
       jwtService,
       configService.get<string>("auth.jwt.accessSecret")!,
@@ -37,6 +40,7 @@ export class AuthService {
       configService.get<string>("auth.jwt.accessExpires")!,
       configService.get<string>("auth.jwt.refreshExpires")!
     );
+
   }
 
   /**
@@ -374,7 +378,7 @@ export class AuthService {
   /**
    * Forgot password - generate reset token and send email
    */
-  async forgotPassword(
+  async   forgotPassword(
     forgotPasswordDto: ForgotPasswordDto,
     userAgent?: string,
     ipAddress?: string
@@ -411,9 +415,6 @@ export class AuthService {
 
     // Store reset token in Redis with user ID
     await this.redis.set(`${resetPrefix}${resetToken}`, user.id, ttl);
-
-    const keys = await this.redis.get(`${resetPrefix}${resetToken}`);
-    console.log(keys, "keys");
 
     // Build reset URL
     const appOrigin = this.configService.get<string>("auth.app.origin");
@@ -611,6 +612,9 @@ export class AuthService {
     }
 
     if (emailAttemptCount >= maxAttempts || ipAttemptCount >= maxAttempts) {
+      this.logger.debug(
+        `Too many password reset attempts. Please try again in ${windowMin} minutes.`
+      );
       throw new UnauthorizedException(
         `Too many password reset attempts. Please try again in ${windowMin} minutes.`
       );
