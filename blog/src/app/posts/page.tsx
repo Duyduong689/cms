@@ -31,7 +31,6 @@ export default function Posts() {
   const deletePost = useDeletePost();
 
   const remove = async (id: string) => {
-    if (!confirm("Delete this post?")) return;
     try {
       await deletePost.mutateAsync(id);
     } catch (error) {
