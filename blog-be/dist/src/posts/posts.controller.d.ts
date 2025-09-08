@@ -6,6 +6,12 @@ import { JwtPayload } from '../common/utils/token.util';
 export declare class PostsController {
     private readonly postsService;
     constructor(postsService: PostsService);
+    getDashboardStats(): Promise<{
+        posts: number;
+        published: number;
+        drafts: number;
+    }>;
+    getRecent(limit?: number): Promise<any[]>;
     create(createPostDto: CreatePostDto, user: JwtPayload): Promise<{
         id: string;
         title: string;

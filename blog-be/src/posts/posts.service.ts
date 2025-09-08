@@ -32,8 +32,11 @@ export class PostsService {
       },
     });
 
-    // Invalidate all list caches when new post is created
-    await this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`);
+    // Invalidate list and dashboard caches when new post is created
+    await Promise.all([
+      this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
+      this.redis.delByPattern(`${this.CACHE_PREFIX}:dashboard*`),
+    ]);
 
     return post;
   }
@@ -126,10 +129,11 @@ export class PostsService {
       data: updatePostDto,
     });
 
-    // Invalidate all list caches and the specific item cache
+    // Invalidate list, item and dashboard caches
     await Promise.all([
       this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
       this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+      this.redis.delByPattern(`${this.CACHE_PREFIX}:dashboard*`),
     ]);
 
     return post;
@@ -141,10 +145,11 @@ export class PostsService {
     
     const post = await this.prisma.post.delete({ where: { id } });
 
-    // Invalidate all list caches and the specific item cache
+    // Invalidate list, item and dashboard caches
     await Promise.all([
       this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
       this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+      this.redis.delByPattern(`${this.CACHE_PREFIX}:dashboard*`),
     ]);
 
     return post;
@@ -158,5 +163,41 @@ export class PostsService {
       .replace(/[^a-z0-9-]/g, '')
       .replace(/--+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  // Dashboard helpers
+  async getDashboardStats() {
+    const cacheKey = `${this.CACHE_PREFIX}:dashboard:stats`;
+    const cached = await this.redis.get<{ posts: number; published: number; drafts: number }>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const [posts, published, drafts] = await Promise.all([
+      this.prisma.post.count(),
+      this.prisma.post.count({ where: { status: 'published' as any } }),
+      this.prisma.post.count({ where: { status: 'draft' as any } }),
+    ]);
+
+    const stats = { posts, published, drafts };
+    await this.redis.set(cacheKey, stats, this.CACHE_TTL);
+    return stats;
+  }
+
+  async getRecent(limit = 5) {
+    const cacheKey = `${this.CACHE_PREFIX}:dashboard:recent:${limit}`;
+    const cached = await this.redis.get<any[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const items = await this.prisma.post.findMany({
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, title: true, slug: true, status: true, updatedAt: true },
+    });
+
+    await this.redis.set(cacheKey, items, this.CACHE_TTL);
+    return items;
   }
 }

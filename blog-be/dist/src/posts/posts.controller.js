@@ -28,6 +28,12 @@ let PostsController = class PostsController {
     constructor(postsService) {
         this.postsService = postsService;
     }
+    getDashboardStats() {
+        return this.postsService.getDashboardStats();
+    }
+    getRecent(limit = 5) {
+        return this.postsService.getRecent(Number(limit));
+    }
     create(createPostDto, user) {
         return this.postsService.create(createPostDto);
     }
@@ -45,6 +51,29 @@ let PostsController = class PostsController {
     }
 };
 exports.PostsController = PostsController;
+__decorate([
+    (0, common_1.Get)('dashboard/stats'),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN', 'STAFF'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get dashboard post statistics' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Returns counts of posts by status' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PostsController.prototype, "getDashboardStats", null);
+__decorate([
+    (0, common_1.Get)('dashboard/recent'),
+    (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('ADMIN', 'STAFF'),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Get recent posts ordered by updatedAt desc' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Returns recent posts' }),
+    __param(0, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], PostsController.prototype, "getRecent", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_access_guard_1.JwtAccessGuard, roles_guard_1.RolesGuard),

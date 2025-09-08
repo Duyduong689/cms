@@ -4,27 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, FileText, Plus, Tags, User } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import { useMe } from "@/hooks/use-auth";
+import { usePostStats, useRecentPosts } from "@/hooks/use-posts-dashboard";
+import { Eye, FileText, Plus, Tags, User } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 
-
-interface PostListItem {
-  id: string;
-  title: string;
-  slug: string;
-  status: "draft" | "published";
-  updatedAt: string;
-}
 
 export default function Home() {
-  const [recent, setRecent] = useState<PostListItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ posts: 0, drafts: 0, published: 0 });
-
   const { data: user, isLoading: isAuthLoading, isError } = useMe();
+  const { data: stats, isLoading: statsLoading, isError: statsError } = usePostStats();
+  const { data: recent, isLoading: recentLoading, isError: recentError } = useRecentPosts();
   const skeletonRows = useMemo(() => new Array(5).fill(0), []);
+  const loading = statsLoading || recentLoading;
 
   // Handle loading state - all hooks are called above this point
   if (isAuthLoading) {
@@ -56,7 +48,7 @@ export default function Home() {
         </div>
         <div className="flex gap-2">
           <Button asChild>
-            <a href="/posts#new">
+            <a href="/posts/new">
               <Plus className="w-4 h-4 mr-2" />
               New Post
             </a>
@@ -72,7 +64,7 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-bold">
-            {stats.posts}
+            {loading ? '—' : stats?.posts ?? 0}
           </CardContent>
         </Card>
         <Card>
@@ -82,7 +74,7 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-bold text-primary">
-            {stats.published}
+            {loading ? '—' : stats?.published ?? 0}
           </CardContent>
         </Card>
         <Card>
@@ -92,7 +84,7 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-3xl font-bold">
-            {stats.drafts}
+            {loading ? '—' : stats?.drafts ?? 0}
           </CardContent>
         </Card>
         <Card>
@@ -146,7 +138,7 @@ export default function Home() {
                       </td>
                     </tr>
                   ))}
-                {!loading &&
+                {!loading && recent &&
                   recent.map((p) => (
                     <tr key={p.id} className="border-b">
                       <td className="py-2 font-medium">
@@ -172,13 +164,20 @@ export default function Home() {
                       </td>
                     </tr>
                   ))}
-                {!loading && recent.length === 0 && (
+                {!loading && (!recent || recent.length === 0) && (
                   <tr>
                     <td
                       colSpan={4}
                       className="py-6 text-center text-muted-foreground"
                     >
                       No posts yet. Create your first one.
+                    </td>
+                  </tr>
+                )}
+                {(statsError || recentError) && !loading && (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-destructive">
+                      Failed to load dashboard. Please try again.
                     </td>
                   </tr>
                 )}

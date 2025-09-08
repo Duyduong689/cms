@@ -32,7 +32,10 @@ let PostsService = class PostsService {
                 ...restData,
             },
         });
-        await this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`);
+        await Promise.all([
+            this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
+            this.redis.delByPattern(`${this.CACHE_PREFIX}:dashboard*`),
+        ]);
         return post;
     }
     async findAll(query) {
@@ -97,6 +100,7 @@ let PostsService = class PostsService {
         await Promise.all([
             this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
             this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+            this.redis.delByPattern(`${this.CACHE_PREFIX}:dashboard*`),
         ]);
         return post;
     }
@@ -106,6 +110,7 @@ let PostsService = class PostsService {
         await Promise.all([
             this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
             this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
+            this.redis.delByPattern(`${this.CACHE_PREFIX}:dashboard*`),
         ]);
         return post;
     }
@@ -117,6 +122,35 @@ let PostsService = class PostsService {
             .replace(/[^a-z0-9-]/g, '')
             .replace(/--+/g, '-')
             .replace(/^-+|-+$/g, '');
+    }
+    async getDashboardStats() {
+        const cacheKey = `${this.CACHE_PREFIX}:dashboard:stats`;
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+        const [posts, published, drafts] = await Promise.all([
+            this.prisma.post.count(),
+            this.prisma.post.count({ where: { status: 'published' } }),
+            this.prisma.post.count({ where: { status: 'draft' } }),
+        ]);
+        const stats = { posts, published, drafts };
+        await this.redis.set(cacheKey, stats, this.CACHE_TTL);
+        return stats;
+    }
+    async getRecent(limit = 5) {
+        const cacheKey = `${this.CACHE_PREFIX}:dashboard:recent:${limit}`;
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+            return cached;
+        }
+        const items = await this.prisma.post.findMany({
+            take: limit,
+            orderBy: { updatedAt: 'desc' },
+            select: { id: true, title: true, slug: true, status: true, updatedAt: true },
+        });
+        await this.redis.set(cacheKey, items, this.CACHE_TTL);
+        return items;
     }
 };
 exports.PostsService = PostsService;

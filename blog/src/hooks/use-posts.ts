@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Post, QueryParams, postsApi } from "@/lib/api/posts";
 import { toast } from "sonner";
+import { createDashboardInvalidator, recentPostsLimit } from "./use-posts-dashboard";
 
 // Query keys
 export const postKeys = {
@@ -28,11 +29,13 @@ export function usePost(id: string) {
 
 export function useCreatePost() {
   const queryClient = useQueryClient();
+  const dashboardInvalidator = createDashboardInvalidator(queryClient);
 
   return useMutation({
     mutationFn: postsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+      dashboardInvalidator.all(recentPostsLimit);
       toast.success("Post created successfully");
     },
     onError: (error) => {
@@ -44,6 +47,7 @@ export function useCreatePost() {
 
 export function useUpdatePost() {
   const queryClient = useQueryClient();
+  const dashboardInvalidator = createDashboardInvalidator(queryClient);
 
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Partial<Post>) =>
@@ -51,6 +55,7 @@ export function useUpdatePost() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: postKeys.lists() });
       queryClient.invalidateQueries({ queryKey: postKeys.detail(id) });
+      dashboardInvalidator.all(recentPostsLimit);
       toast.success("Post updated successfully");
     },
     onError: (error) => {
@@ -62,11 +67,13 @@ export function useUpdatePost() {
 
 export function useDeletePost() {
   const queryClient = useQueryClient();
+  const dashboardInvalidator = createDashboardInvalidator(queryClient);
 
   return useMutation({
     mutationFn: postsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+      dashboardInvalidator.all(recentPostsLimit);
       toast.success("Post deleted successfully");
     },
     onError: (error) => {

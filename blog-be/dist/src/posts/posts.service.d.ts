@@ -62,4 +62,10 @@ export declare class PostsService {
         updatedAt: Date;
     }>;
     private slugify;
+    getDashboardStats(): Promise<{
+        posts: number;
+        published: number;
+        drafts: number;
+    }>;
+    getRecent(limit?: number): Promise<any[]>;
 }

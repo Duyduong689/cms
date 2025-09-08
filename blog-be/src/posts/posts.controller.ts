@@ -24,6 +24,26 @@ import { JwtPayload } from '../common/utils/token.util';
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
+  @Get('dashboard/stats')
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get dashboard post statistics' })
+  @ApiOkResponse({ description: 'Returns counts of posts by status' })
+  getDashboardStats() {
+    return this.postsService.getDashboardStats();
+  }
+
+  @Get('dashboard/recent')
+  @UseGuards(JwtAccessGuard, RolesGuard)
+  @Roles('ADMIN', 'STAFF')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get recent posts ordered by updatedAt desc' })
+  @ApiOkResponse({ description: 'Returns recent posts' })
+  getRecent(@Query('limit') limit = 5) {
+    return this.postsService.getRecent(Number(limit));
+  }
+
   @Post()
   @UseGuards(JwtAccessGuard, RolesGuard)
   @Roles('ADMIN', 'STAFF')
