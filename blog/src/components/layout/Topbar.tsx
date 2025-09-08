@@ -40,7 +40,7 @@ export function Topbar() {
         />
       </div>
       <div className="flex items-center gap-2">
-        <div className="text-xs text-muted-foreground hidden md:block">
+        {/* <div className="text-xs text-muted-foreground hidden md:block">
           Role
         </div>
         <select
@@ -50,7 +50,7 @@ export function Topbar() {
         >
           <option value="admin">Admin</option>
           <option value="editor">Editor</option>
-        </select>
+        </select> */}
         <Button
           variant="ghost"
           size="icon"

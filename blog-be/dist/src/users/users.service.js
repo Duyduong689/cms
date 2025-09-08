@@ -291,6 +291,7 @@ let UsersService = class UsersService {
     async invalidateListCache() {
         const pattern = `${cache_keys_1.USERS_LIST_PREFIX}:*`;
         try {
+            await this.redis.delByPattern(pattern);
         }
         catch (error) {
             console.warn('Failed to invalidate list cache:', error);

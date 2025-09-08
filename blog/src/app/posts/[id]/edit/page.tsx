@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { usePost, useUpdatePost } from "@/hooks/use-posts";
 import { Post } from "@/lib/api/posts";
 import { ArrowLeft, Save } from "lucide-react";
@@ -23,51 +29,69 @@ export default function PostEdit({ params }: { params: { id: string } }) {
       setPost(originalPost);
     }
   }, [originalPost]);
+  
+  if (!post) {
+    return <div>Post not found</div>;
+  }
 
-  if (isLoading || !post) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
   const save = async () => {
     try {
       const { id, createdAt, updatedAt, ...data } = post;
-      await updatePost.mutateAsync({ 
+      await updatePost.mutateAsync({
         id,
         ...data,
-        slug: data.slug || slugify(data.title)
+        slug: data.slug || slugify(data.title),
       });
       router.push(`/posts/${post.id}`);
     } catch (error) {
-      console.error('Save error:', error);
+      console.error("Save error:", error);
     }
   };
+
+
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-2"/>Back</Button>
-        <Button onClick={save} disabled={updatePost.isPending}><Save className="w-4 h-4 mr-2"/>Save</Button>
+        <Button variant="ghost" onClick={() => router.back()}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+        <Button onClick={save} disabled={updatePost.isPending}>
+          <Save className="w-4 h-4 mr-2" />
+          Save
+        </Button>
       </div>
 
       <div className="bg-card text-card-foreground rounded-lg shadow-lg">
         <div className="p-6 border-b flex items-center justify-between">
           <div className="font-semibold text-lg">Edit Post</div>
-          <div className="text-sm text-muted-foreground">Updated {new Date(post.updatedAt).toLocaleString()}</div>
+          <div className="text-sm text-muted-foreground">
+            Updated {new Date(post.updatedAt).toLocaleString()}
+          </div>
         </div>
         <div className="p-6 space-y-4">
           <Input
             placeholder="Title"
             value={post.title}
-            onChange={(e) => setPost({
-              ...post,
-              title: e.target.value,
-              slug: post.slug || slugify(e.target.value)
-            })}
+            onChange={(e) =>
+              setPost({
+                ...post,
+                title: e.target.value,
+                slug: post.slug || slugify(e.target.value),
+              })
+            }
           />
           <Input
             placeholder="Slug"
             value={post.slug}
-            onChange={(e) => setPost({ ...post, slug: slugify(e.target.value) })}
+            onChange={(e) =>
+              setPost({ ...post, slug: slugify(e.target.value) })
+            }
           />
           <Textarea
             placeholder="Excerpt"
@@ -80,30 +104,41 @@ export default function PostEdit({ params }: { params: { id: string } }) {
               <TabsTrigger value="seo">SEO</TabsTrigger>
             </TabsList>
             <TabsContent value="content" className="space-y-4">
-              <Textarea 
-                rows={15} 
-                placeholder="Write in Markdown..." 
-                value={post.content} 
-                onChange={(e) => setPost({ ...post, content: e.target.value })} 
+              <Textarea
+                rows={15}
+                placeholder="Write in Markdown..."
+                value={post.content}
+                onChange={(e) => setPost({ ...post, content: e.target.value })}
               />
-              <Input 
-                placeholder="Cover Image URL (R2/S3)" 
-                value={post.coverImage} 
-                onChange={(e) => setPost({ ...post, coverImage: e.target.value })} 
+              <Input
+                placeholder="Cover Image URL (R2/S3)"
+                value={post.coverImage}
+                onChange={(e) =>
+                  setPost({ ...post, coverImage: e.target.value })
+                }
               />
-              <Input 
-                placeholder="Tags (comma separated)" 
-                value={post.tags.join(", ")} 
-                onChange={(e) => setPost({ 
-                  ...post, 
-                  tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) 
-                })} 
+              <Input
+                placeholder="Tags (comma separated)"
+                value={post.tags.join(", ")}
+                onChange={(e) =>
+                  setPost({
+                    ...post,
+                    tags: e.target.value
+                      .split(",")
+                      .map((t) => t.trim())
+                      .filter(Boolean),
+                  })
+                }
               />
-              <Select 
-                value={post.status} 
-                onValueChange={(v) => setPost({ ...post, status: v as Post["status"] })}
+              <Select
+                value={post.status}
+                onValueChange={(v) =>
+                  setPost({ ...post, status: v as Post["status"] })
+                }
               >
-                <SelectTrigger><SelectValue placeholder="Status"/></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
@@ -111,21 +146,27 @@ export default function PostEdit({ params }: { params: { id: string } }) {
               </Select>
             </TabsContent>
             <TabsContent value="seo" className="space-y-4">
-              <Input 
-                placeholder="Meta Title" 
-                value={post.metaTitle || ""} 
-                onChange={(e) => setPost({ ...post, metaTitle: e.target.value })} 
+              <Input
+                placeholder="Meta Title"
+                value={post.metaTitle || ""}
+                onChange={(e) =>
+                  setPost({ ...post, metaTitle: e.target.value })
+                }
               />
-              <Textarea 
-                rows={4} 
-                placeholder="Meta Description" 
-                value={post.metaDescription || ""} 
-                onChange={(e) => setPost({ ...post, metaDescription: e.target.value })} 
+              <Textarea
+                rows={4}
+                placeholder="Meta Description"
+                value={post.metaDescription || ""}
+                onChange={(e) =>
+                  setPost({ ...post, metaDescription: e.target.value })
+                }
               />
-              <Input 
-                placeholder="Open Graph Image URL" 
-                value={post.openGraphImage || ""} 
-                onChange={(e) => setPost({ ...post, openGraphImage: e.target.value })} 
+              <Input
+                placeholder="Open Graph Image URL"
+                value={post.openGraphImage || ""}
+                onChange={(e) =>
+                  setPost({ ...post, openGraphImage: e.target.value })
+                }
               />
             </TabsContent>
           </Tabs>

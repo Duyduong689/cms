@@ -351,7 +351,7 @@ export class UsersService {
     // In a real implementation, you'd iterate through tracked keys and delete them
     try {
       // This is a placeholder - actual implementation would depend on your Redis setup
-      // await this.redis.delPattern(pattern);
+      await this.redis.delByPattern(pattern);
     } catch (error) {
       console.warn('Failed to invalidate list cache:', error);
     }

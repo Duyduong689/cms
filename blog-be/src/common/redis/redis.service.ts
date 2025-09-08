@@ -62,6 +62,28 @@ export class RedisService {
     }
   }
 
+  async delByPattern(pattern: string): Promise<number> {
+    try {
+      let cursor = '0';
+      let totalRemoved = 0;
+
+      do {
+        const [nextCursor, keys] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        if (keys.length > 0) {
+          const removed = await this.redis.del(...keys);
+          totalRemoved += removed;
+        }
+        cursor = nextCursor;
+      } while (cursor !== '0');
+
+      this.logger.debug(`Deleted keys by pattern ${pattern} (${totalRemoved} keys removed)`);
+      return totalRemoved;
+    } catch (error) {
+      this.logger.error(`Failed to delete keys with pattern ${pattern}:`, error.message);
+      throw error;
+    }
+  }
+
   async exists(key: string): Promise<boolean> {
     try {
       const result = await this.redis.exists(key);

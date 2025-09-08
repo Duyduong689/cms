@@ -32,8 +32,8 @@ export class PostsService {
       },
     });
 
-    // Invalidate list cache when new post is created
-    await this.redis.del(`${this.CACHE_PREFIX}:list`);
+    // Invalidate all list caches when new post is created
+    await this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`);
 
     return post;
   }
@@ -126,9 +126,9 @@ export class PostsService {
       data: updatePostDto,
     });
 
-    // Invalidate both list and item cache
+    // Invalidate all list caches and the specific item cache
     await Promise.all([
-      this.redis.del(`${this.CACHE_PREFIX}:list`),
+      this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
       this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
     ]);
 
@@ -141,9 +141,9 @@ export class PostsService {
     
     const post = await this.prisma.post.delete({ where: { id } });
 
-    // Invalidate both list and item cache
+    // Invalidate all list caches and the specific item cache
     await Promise.all([
-      this.redis.del(`${this.CACHE_PREFIX}:list`),
+      this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
       this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
     ]);
 

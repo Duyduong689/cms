@@ -32,7 +32,7 @@ let PostsService = class PostsService {
                 ...restData,
             },
         });
-        await this.redis.del(`${this.CACHE_PREFIX}:list`);
+        await this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`);
         return post;
     }
     async findAll(query) {
@@ -95,7 +95,7 @@ let PostsService = class PostsService {
             data: updatePostDto,
         });
         await Promise.all([
-            this.redis.del(`${this.CACHE_PREFIX}:list`),
+            this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
             this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
         ]);
         return post;
@@ -104,7 +104,7 @@ let PostsService = class PostsService {
         await this.findOne(id);
         const post = await this.prisma.post.delete({ where: { id } });
         await Promise.all([
-            this.redis.del(`${this.CACHE_PREFIX}:list`),
+            this.redis.delByPattern(`${this.CACHE_PREFIX}:list*`),
             this.redis.del(this.redis.generateKey(`${this.CACHE_PREFIX}:item`, { id })),
         ]);
         return post;
